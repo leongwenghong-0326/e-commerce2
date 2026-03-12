@@ -5,53 +5,52 @@ $message = "";
 $showForm = false;
 $token = "";
 
-// Step 1: Get token from GET or POST
-if(isset($_GET['token'])){
-    $token = $_GET['token'];
-} elseif(isset($_POST['token'])){
-    $token = $_POST['token'];
+if (isset($_GET['token'])) {
+    $token = trim($_GET['token']);
+} elseif (isset($_POST['token'])) {
+    $token = trim($_POST['token']);
 }
 
-// Step 2: Validate token
-if(!empty($token)){
+if (!empty($token)) {
+    // Validate token and expiry
     $sql = "SELECT UserId FROM Users WHERE ResetToken = :token AND ResetTokenExpiry > NOW() LIMIT 1";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([':token' => $token]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if($user){
+    if ($user) {
         $showForm = true;
 
-        // Step 3: Handle form submission
-        if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['new_password'], $_POST['confirm_password'])){
-            $newPassword = trim($_POST['new_password']);
-            $confirmPassword = trim($_POST['confirm_password']);
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['new_password'], $_POST['confirm_password'])) {
+            $newPassword = $_POST['new_password'];
+            $confirmPassword = $_POST['confirm_password'];
 
-            // Validate password
-            if(strlen($newPassword) < 6){
-                $message = "Password must be at least 6 characters.";
-            } elseif($newPassword !== $confirmPassword){
+            if (strlen($newPassword) < 8) { // Increased to 8 for better security
+                $message = "Password must be at least 8 characters.";
+            } elseif ($newPassword !== $confirmPassword) {
                 $message = "Passwords do not match.";
             } else {
-                $passwordHash = password_hash($newPassword, PASSWORD_DEFAULT);
+                try {
+                    $passwordHash = password_hash($newPassword, PASSWORD_DEFAULT);
 
-                // Update password and clear token/expiry
-                $updateSql = "UPDATE Users SET Password = :password, ResetToken = NULL, ResetTokenExpiry = NULL WHERE UserId = :userId";
-                $updateStmt = $pdo->prepare($updateSql);
-                $updateStmt->execute([
-                    ':password' => $passwordHash,
-                    ':userId' => $user['UserId']
-                ]);
+                    // Update and BURN the token immediately
+                    $updateSql = "UPDATE Users SET Password = :password, ResetToken = NULL, ResetTokenExpiry = NULL WHERE UserId = :userId";
+                    $updateStmt = $pdo->prepare($updateSql);
+                    $updateStmt->execute([
+                        ':password' => $passwordHash,
+                        ':userId' => $user['UserId']
+                    ]);
 
-                $message = "Password has been reset successfully!";
-                $showForm = false;
+                    header("Location: login.php?reset=success");
+                    exit;
+                } catch (PDOException $e) {
+                    $message = "Database error. Please try again later.";
+                }
             }
         }
-
     } else {
         $message = "Invalid or expired token.";
     }
-
 } else {
     $message = "No token provided.";
 }
@@ -68,19 +67,18 @@ if(!empty($token)){
     <h2>Reset Password</h2>
 
     <?php if($message): ?>
-        <p><?php echo htmlspecialchars($message); ?></p>
+        <p style="color:red;"><?php echo htmlspecialchars($message); ?></p>
     <?php endif; ?>
 
     <?php if($showForm): ?>
         <form method="POST" action="">
-            <!-- Keep token hidden -->
             <input type="hidden" name="token" value="<?php echo htmlspecialchars($token); ?>">
 
             <label for="new_password">New Password:</label>
-            <input type="password" id="new_password" name="new_password" required><br><br>
+            <input type="password" id="new_password" name="new_password" required minlength="8"><br><br>
 
             <label for="confirm_password">Confirm Password:</label>
-            <input type="password" id="confirm_password" name="confirm_password" required><br><br>
+            <input type="password" id="confirm_password" name="confirm_password" required minlength="8"><br><br>
 
             <button type="submit">Reset Password</button>
         </form>
