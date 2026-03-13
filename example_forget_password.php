@@ -47,7 +47,7 @@ if($_SERVER['REQUEST_METHOD']=="POST"){
             $mail->setFrom('yourexample.com','E-commerce');
             $mail->addAddress($email);
 
-            $resetLink = $base_url ."/reset_password.php?token=" . $token;
+            $resetLink = $base_url . "/e-commerce2/reset_password.php?token=" . $token;
 
             $mail->isHTML(true);
             $mail->Subject = 'Password Reset Request';
