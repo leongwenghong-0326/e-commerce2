@@ -1,11 +1,8 @@
-<?php
+<?php 
 
 require_once 'config/config.php';
 
-if (!$_SESSION['UserId']){
-    header("Location: member_login.php");
-    exit();
-}
+
 
 ?>
 
@@ -14,7 +11,7 @@ if (!$_SESSION['UserId']){
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>E-commerce || Home</title>
 </head>
 <body>
     <?php include 'layout/nav.php'; ?>
