@@ -1,14 +1,12 @@
 <?php
-require_once 'config/config.php';
+require_once __DIR__ . '/../config/config.php'; // Adjust path if needed
 
-// Default avatar if user has none
-$defaultAvatar = 'assets/default-avatar.png';
-
-// Initialize variables
+// Default values
+$defaultAvatar = 'asset/image/default_image.png';
 $userAvatar = $defaultAvatar;
-$fullName = '';
+$fullName = "User";
 
-// If user is logged in, fetch their full name and profile photo from UserProfile
+// Check if user is logged in
 if(isset($_SESSION['user_id'])) {
     $userId = $_SESSION['user_id'];
 
@@ -19,43 +17,39 @@ if(isset($_SESSION['user_id'])) {
         WHERE u.UserId = :userId
         LIMIT 1
     ");
-    $stmt->bindParam(':userId', $userId);
-    $stmt->execute();
+    $stmt->execute([':userId' => $userId]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if($user) {
-        $fullName = trim(($user['FirstName'] ?? '') . ' ' . ($user['LastName'] ?? ''));
-        if(empty($fullName)) $fullName = "User"; // fallback
-        $userAvatar = !empty($user['ProfilePhotoUrl']) ? $user['ProfilePhotoUrl'] : $defaultAvatar;
-    } else {
-        $fullName = "User";
+        $first = trim($user['FirstName'] ?? '');
+        $last  = trim($user['LastName'] ?? '');
+        $fullName = trim($first . ' ' . $last);
+        if(empty($fullName)) $fullName = "User";
+
+        // Use server path to check if file exists, but store **web path** for display
+        $avatarPath = $user['ProfilePhotoUrl'] ?? '';
+        if(!empty($avatarPath) && file_exists(__DIR__ . '/../' . $avatarPath)) {
+            $userAvatar = $avatarPath;
+        }
     }
 }
 ?>
+
 <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
     <div class="container-fluid">
-        <!-- Brand -->
         <a class="navbar-brand" href="index.php">E-commerce</a>
 
-        <!-- Toggler for mobile -->
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" 
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent"
                 aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
 
-        <!-- Navbar content -->
         <div class="collapse navbar-collapse" id="navbarContent">
-            <!-- Centered search container -->
             <div class="d-flex flex-column flex-lg-row w-100 align-items-center justify-content-center mb-2 mb-lg-0">
                 <form class="d-flex w-100 w-lg-auto" action="index.php" method="get" role="search">
                     <div class="input-group search-container" style="min-width: 250px;">
-                        <input 
-                            type="search" 
-                            name="q" 
-                            class="form-control rounded-pill ps-3 shadow-sm search-input" 
-                            placeholder="Search" 
-                            aria-label="Search"
-                        >
+                        <input type="search" name="q" class="form-control rounded-pill ps-3 shadow-sm search-input"
+                               placeholder="Search" aria-label="Search">
                         <button class="btn btn-success rounded-pill shadow-sm search-btn" type="submit">
                             Search
                         </button>
@@ -63,12 +57,15 @@ if(isset($_SESSION['user_id'])) {
                 </form>
             </div>
 
-            <!-- User menu -->
             <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-center">
                 <?php if(isset($_SESSION['user_id'])): ?>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                            <img src="<?php echo htmlspecialchars($userAvatar); ?>" class="rounded-circle me-2" width="32" height="32" alt="User Avatar">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown"
+                           role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <img src="<?php echo htmlspecialchars($userAvatar); ?>"
+                                 class="rounded-circle me-2" width="32" height="32"
+                                 alt="User Avatar"
+                                 onerror="this.onerror=null; this.src='<?php echo $defaultAvatar; ?>'">
                             <span><?php echo htmlspecialchars($fullName); ?></span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
@@ -78,12 +75,8 @@ if(isset($_SESSION['user_id'])) {
                         </ul>
                     </li>
                 <?php else: ?>
-                    <li class="nav-item">
-                        <a class="nav-link" href="member_login.php">Login</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="member_register.php">Register</a>
-                    </li>
+                    <li class="nav-item"><a class="nav-link" href="member_login.php">Login</a></li>
+                    <li class="nav-item"><a class="nav-link" href="member_register.php">Register</a></li>
                 <?php endif; ?>
             </ul>
         </div>
