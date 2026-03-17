@@ -27,18 +27,11 @@ function getPDOConnection(): PDO
 
 $pdo = getPDOConnection();
 
-$protocol = (!empty($_SERVER['HTTPS']) 
-            && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+
+$protocal = (!empty($_SERVER['HTTPS']) 
+            && $_SERVER['HTTPS'] !=='off' ) ? 'https://' : 'http://';
 
 $domain = $_SERVER['HTTP_HOST'];
 
-$base_url = $protocol . $domain;
-
+$base_url = $protocal . $domain;
 ?>
-
-<!-- Bootstrap CSS -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<!-- Bootstrap Icons -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-<!-- Optional Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
