@@ -387,7 +387,7 @@ $avatarSrc = htmlspecialchars($profile['ProfilePhotoUrl'] ?? 'asset/image/defaul
                                        value="<?php echo htmlspecialchars($profile['PhoneNumber'] ?? ''); ?>">
                             </div>
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-1"></i>Save Changes
+                                <i class="fas fa-user-edit me-1"></i>Update Profile
                             </button>
                         </form>
                     </div>
@@ -599,7 +599,7 @@ $avatarSrc = htmlspecialchars($profile['ProfilePhotoUrl'] ?? 'asset/image/defaul
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Address</button>
+                    <button type="submit" class="btn btn-primary">Edit Address</button>
                 </div>
             </form>
         </div>
