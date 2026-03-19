@@ -43,7 +43,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 sendJsonResponse(403, 'You do not have administrator privileges to access this page.');
             }
 
-            // 4. 登录成功，设置管理员 Session
+            // 4. 登录成功，更新LastLogin并设置管理员 Session
+            $updateSql = "UPDATE Users SET LastLogin = NOW() WHERE UserId = :userId";
+            $updateStmt = $pdo->prepare($updateSql);
+            $updateStmt->bindParam(':userId', $user['UserId']);
+            $updateStmt->execute();
+
             $_SESSION['admin_id'] = $user['UserId'];
             $_SESSION['role'] = $user['RoleName'];
 

@@ -41,7 +41,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (password_verify($password, $user['PasswordHash'])) {
-            // 登录成功，设置 Session
+            // 登录成功，更新LastLogin并设置 Session
+            $updateSql = "UPDATE Users SET LastLogin = NOW() WHERE UserId = :userId";
+            $updateStmt = $pdo->prepare($updateSql);
+            $updateStmt->bindParam(':userId', $user['UserId']);
+            $updateStmt->execute();
+
             $_SESSION['user_id'] = $user['UserId'];
             $_SESSION['role'] = $user['RoleName'];
 
