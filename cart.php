@@ -299,11 +299,25 @@ $grandTotal = $subtotal + $shippingFee;
 	<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
-	<style>
+	    <link rel="stylesheet" href="asset/css/member-theme.css">
+    <style>
+		:root {
+			--bg-start: #f4fbf8;
+			--bg-end: #e8f4ff;
+			--ink: #1b2530;
+			--panel: rgba(255, 255, 255, 0.84);
+			--line: rgba(27, 37, 48, 0.14);
+			--accent: #0f8f6f;
+			--accent-strong: #0b6f56;
+		}
+
 		body {
 			font-family: 'Outfit', sans-serif;
-			background: #f8fbf9;
-			color: #1b2530;
+			color: var(--ink);
+			background:
+				radial-gradient(circle at 10% 15%, rgba(15, 143, 111, 0.22), transparent 40%),
+				radial-gradient(circle at 90% 80%, rgba(39, 124, 198, 0.18), transparent 35%),
+				linear-gradient(135deg, var(--bg-start), var(--bg-end));
 		}
 
 		.page-shell {
@@ -313,11 +327,13 @@ $grandTotal = $subtotal + $shippingFee;
 		}
 
 		.cart-header {
-			background: #fff;
-			border: 1px solid #e2ede9;
+			background: var(--panel);
+			border: 1px solid var(--line);
 			border-radius: 16px;
-			padding: 18px 18px;
+			padding: 18px;
 			margin-bottom: 16px;
+			backdrop-filter: blur(8px);
+			box-shadow: 0 14px 30px rgba(10, 36, 60, 0.08);
 		}
 
 		.cart-title {
@@ -334,10 +350,12 @@ $grandTotal = $subtotal + $shippingFee;
 		}
 
 		.panel {
-			background: #fff;
-			border: 1px solid #e2ede9;
+			background: var(--panel);
+			border: 1px solid var(--line);
 			border-radius: 16px;
 			overflow: hidden;
+			backdrop-filter: blur(8px);
+			box-shadow: 0 14px 30px rgba(10, 36, 60, 0.08);
 		}
 
 		.panel-head {
@@ -372,7 +390,7 @@ $grandTotal = $subtotal + $shippingFee;
 			height: 88px;
 			border-radius: 12px;
 			object-fit: cover;
-			border: 1px solid #e2ede9;
+			border: 1px solid var(--line);
 			background: #f4f8f6;
 		}
 
@@ -427,6 +445,17 @@ $grandTotal = $subtotal + $shippingFee;
 		.empty i {
 			font-size: 2rem;
 			color: #9ab3a7;
+		}
+
+		.btn-success {
+			border: none;
+			border-radius: 12px;
+			background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+			font-weight: 700;
+		}
+
+		.btn-success:hover {
+			box-shadow: 0 8px 16px rgba(11, 111, 86, 0.3);
 		}
 
 		@media (max-width: 992px) {

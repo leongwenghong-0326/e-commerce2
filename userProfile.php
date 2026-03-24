@@ -315,12 +315,81 @@ $avatarSrc = htmlspecialchars($profile['ProfilePhotoUrl'] ?? 'asset/image/defaul
     <title>E-commerce || My Profile</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+        <link rel="stylesheet" href="asset/css/member-theme.css">
     <style>
-        body { background-color: #f8f9fa; }
+        :root {
+            --bg-start: #f4fbf8;
+            --bg-end: #e8f4ff;
+            --ink: #1b2530;
+            --panel: rgba(255, 255, 255, 0.84);
+            --line: rgba(27, 37, 48, 0.14);
+            --accent: #0f8f6f;
+            --accent-strong: #0b6f56;
+        }
+
+        body {
+            color: var(--ink);
+            background:
+                radial-gradient(circle at 10% 15%, rgba(15, 143, 111, 0.22), transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(39, 124, 198, 0.18), transparent 35%),
+                linear-gradient(135deg, var(--bg-start), var(--bg-end));
+        }
+
         .avatar-circle { width: 80px; height: 80px; object-fit: cover; }
         .avatar-preview { width: 100px; height: 100px; object-fit: cover; }
         .toast-shell { position: fixed; top: 70px; right: 20px; z-index: 9999; min-width: 280px; }
-        .list-group-item.active { background-color: #0d6efd; border-color: #0d6efd; }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 14px 30px rgba(10, 36, 60, 0.08);
+        }
+
+        .list-group {
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            box-shadow: 0 14px 30px rgba(10, 36, 60, 0.08);
+        }
+
+        .list-group-item {
+            border-color: rgba(27, 37, 48, 0.08);
+            background: transparent;
+            color: var(--ink);
+        }
+
+        .list-group-item.active {
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        .form-control,
+        .form-select {
+            border-radius: 12px;
+            border: 1px solid rgba(27, 37, 48, 0.2);
+            background: rgba(255, 255, 255, 0.92);
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: rgba(15, 143, 111, 0.75);
+            box-shadow: 0 0 0 4px rgba(15, 143, 111, 0.15);
+        }
+
+        .btn-primary {
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            font-weight: 700;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 8px 16px rgba(11, 111, 86, 0.3);
+        }
     </style>
 </head>
 <body>

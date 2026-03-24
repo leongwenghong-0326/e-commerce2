@@ -233,72 +233,137 @@ $buildUrl = function (array $overrides = []) use ($search, $sortBy, $sortDir, $m
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+        <link rel="stylesheet" href="asset/css/member-theme.css">
     <style>
-        body {
-            font-family: 'Outfit', sans-serif;
-            background: #f8fbf9;
-            color: #1b2530;
+        :root {
+            --bg-start: #f4fbf8;
+            --bg-end: #e8f4ff;
+            --ink: #1b2530;
+            --panel: rgba(255, 255, 255, 0.84);
+            --line: rgba(27, 37, 48, 0.14);
+            --accent: #0f8f6f;
+            --accent-strong: #0b6f56;
         }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Outfit', sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at 10% 15%, rgba(15, 143, 111, 0.22), transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(39, 124, 198, 0.18), transparent 35%),
+                linear-gradient(135deg, var(--bg-start), var(--bg-end));
+        }
+
         .page-shell {
             max-width: 1200px;
             margin: 24px auto 40px;
             padding: 0 14px;
         }
-        .top-panel {
-            background: #fff;
-            border: 1px solid #e2ede9;
+
+        .top-panel,
+        .empty {
+            background: var(--panel);
+            border: 1px solid var(--line);
             border-radius: 16px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 14px 30px rgba(10, 36, 60, 0.08);
+        }
+
+        .top-panel {
             padding: 16px;
             margin-bottom: 14px;
         }
+
         .title {
+            margin: 0;
             font-family: 'Space Grotesk', sans-serif;
             font-weight: 700;
-            margin: 0;
             font-size: clamp(1.35rem, 3vw, 2rem);
+            letter-spacing: -0.012em;
         }
+
+        .form-control,
+        .form-select {
+            border: 1px solid rgba(27, 37, 48, 0.2);
+            border-radius: 12px;
+            min-height: 44px;
+            background: rgba(255, 255, 255, 0.92);
+            font-size: 14px;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: rgba(15, 143, 111, 0.75);
+            box-shadow: 0 0 0 4px rgba(15, 143, 111, 0.15);
+        }
+
+        .btn-success {
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            font-weight: 700;
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 8px 16px rgba(11, 111, 86, 0.3);
+        }
+
         .product-card {
-            background: #fff;
-            border: 1px solid #e2ede9;
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid var(--line);
             border-radius: 16px;
             overflow: hidden;
             height: 100%;
             transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
+
         .product-card:hover {
             transform: translateY(-3px);
-            box-shadow: 0 14px 26px rgba(12, 46, 76, 0.10);
+            box-shadow: 0 16px 30px rgba(12, 46, 76, 0.12);
         }
+
         .product-image {
             width: 100%;
             aspect-ratio: 4 / 3;
             object-fit: cover;
             background: #eef4f1;
-            border-bottom: 1px solid #e9f1ed;
+            border-bottom: 1px solid var(--line);
         }
+
         .product-body {
             padding: 14px;
         }
+
         .name {
             font-weight: 700;
             font-size: 1rem;
             margin-bottom: 6px;
         }
+
         .desc {
             font-size: 13px;
             color: #607080;
             min-height: 40px;
             margin-bottom: 10px;
         }
+
         .price {
             font-weight: 700;
             font-size: 1.08rem;
+            color: var(--accent-strong);
             margin-bottom: 10px;
         }
+
         .stock-note {
             font-size: 12px;
             color: #667788;
         }
+
         .stock-badge {
             display: inline-block;
             font-size: 11px;
@@ -306,24 +371,39 @@ $buildUrl = function (array $overrides = []) use ($search, $sortBy, $sortDir, $m
             border-radius: 999px;
             padding: 4px 10px;
         }
+
         .stock-ok {
             color: #14633b;
             background: #dff4e8;
         }
+
         .stock-low {
             color: #8a5a00;
             background: #fff2d6;
         }
+
         .stock-out {
             color: #9c1f1f;
             background: #fce2e2;
         }
+
         .empty {
-            background: #fff;
-            border: 1px dashed #cfddd7;
-            border-radius: 16px;
             text-align: center;
             padding: 36px 16px;
+        }
+
+        .pagination .page-link {
+            border-radius: 10px;
+            margin: 0 3px;
+            border: 1px solid var(--line);
+            color: #2a3f4f;
+            background: rgba(255,255,255,.86);
+        }
+
+        .pagination .page-item.active .page-link {
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            border-color: var(--accent);
+            color: #fff;
         }
     </style>
 </head>

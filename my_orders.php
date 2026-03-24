@@ -58,11 +58,25 @@ $orders = $orderStmt->fetchAll(PDO::FETCH_ASSOC);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+        <link rel="stylesheet" href="asset/css/member-theme.css">
     <style>
+        :root {
+            --bg-start: #f4fbf8;
+            --bg-end: #e8f4ff;
+            --ink: #1b2530;
+            --panel: rgba(255, 255, 255, 0.84);
+            --line: rgba(27, 37, 48, 0.14);
+            --accent: #0f8f6f;
+            --accent-strong: #0b6f56;
+        }
+
         body {
             font-family: 'Outfit', sans-serif;
-            background: #f8fbf9;
-            color: #1b2530;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at 10% 15%, rgba(15, 143, 111, 0.22), transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(39, 124, 198, 0.18), transparent 35%),
+                linear-gradient(135deg, var(--bg-start), var(--bg-end));
         }
         .page-shell {
             max-width: 1080px;
@@ -70,11 +84,13 @@ $orders = $orderStmt->fetchAll(PDO::FETCH_ASSOC);
             padding: 0 14px;
         }
         .order-card {
-            background: #fff;
-            border: 1px solid #e2ede9;
+            background: var(--panel);
+            border: 1px solid var(--line);
             border-radius: 14px;
             padding: 14px;
             margin-bottom: 12px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 14px 30px rgba(10, 36, 60, 0.08);
         }
         .order-id {
             font-family: 'Space Grotesk', sans-serif;
@@ -100,6 +116,20 @@ $orders = $orderStmt->fetchAll(PDO::FETCH_ASSOC);
         .status-shipped { color: #5f3d9f; background: #ece3ff; }
         .status-delivered { color: #1c6c41; background: #def4e7; }
         .status-cancelled { color: #9c1f1f; background: #fce2e2; }
+
+        .pagination .page-link {
+            border-radius: 10px;
+            margin: 0 3px;
+            border: 1px solid var(--line);
+            color: #2a3f4f;
+            background: rgba(255,255,255,.86);
+        }
+
+        .pagination .page-item.active .page-link {
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            border-color: var(--accent);
+            color: #fff;
+        }
     </style>
 </head>
 <body>

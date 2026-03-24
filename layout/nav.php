@@ -30,6 +30,95 @@ if(isset($_SESSION['user_id'])){
 
 ?>
 <style>
+    :root {
+        --bg-start: #f4fbf8;
+        --bg-end: #e8f4ff;
+        --ink: #1b2530;
+        --panel: rgba(255, 255, 255, 0.84);
+        --line: rgba(27, 37, 48, 0.14);
+        --accent: #0f8f6f;
+        --accent-strong: #0b6f56;
+    }
+
+    .site-nav {
+        background: var(--panel) !important;
+        border-bottom: 1px solid var(--line);
+        backdrop-filter: blur(8px);
+        box-shadow: 0 8px 20px rgba(10, 36, 60, 0.08) !important;
+    }
+
+    .site-nav .navbar-brand {
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: var(--ink);
+    }
+
+    .site-nav .nav-link {
+        color: var(--ink);
+        font-weight: 600;
+        border-radius: 10px;
+        padding: 8px 10px !important;
+    }
+
+    .site-nav .nav-link:hover,
+    .site-nav .nav-link:focus {
+        color: var(--accent-strong);
+        background: rgba(15, 143, 111, 0.08);
+    }
+
+    .site-nav .form-control {
+        border-radius: 12px;
+        border: 1px solid rgba(27, 37, 48, 0.2);
+        background: rgba(255, 255, 255, 0.92);
+    }
+
+    .site-nav .form-control:focus {
+        border-color: rgba(15, 143, 111, 0.75);
+        box-shadow: 0 0 0 4px rgba(15, 143, 111, 0.15);
+    }
+
+    .site-nav .btn-outline-success {
+        border-color: rgba(15, 143, 111, 0.45);
+        color: var(--accent-strong);
+        font-weight: 700;
+        border-radius: 12px;
+    }
+
+    .site-nav .btn-outline-success:hover {
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        border-color: transparent;
+        color: #fff;
+    }
+
+    .site-nav .dropdown-menu {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        box-shadow: 0 14px 30px rgba(10, 36, 60, 0.12);
+        padding: 6px;
+    }
+
+    .site-nav .dropdown-item {
+        border-radius: 8px;
+        font-weight: 500;
+        padding: 8px 10px;
+    }
+
+    .site-nav .dropdown-item:hover {
+        background: rgba(15, 143, 111, 0.08);
+        color: var(--accent-strong);
+    }
+
+    .site-nav .badge.text-bg-success {
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong)) !important;
+    }
+
+    .site-nav .nav-icon {
+        width: 1rem;
+        height: 1rem;
+        flex-shrink: 0;
+    }
+
     .nav-search-shell {
         width: 100%;
         max-width: 420px;
@@ -41,7 +130,7 @@ if(isset($_SESSION['user_id'])){
         }
     }
 </style>
-<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+<nav class="navbar navbar-expand-lg navbar-light site-nav">
     <div class="container-fluid">
         <a class="navbar-brand" href="index.php">E-commerce</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -65,13 +154,17 @@ if(isset($_SESSION['user_id'])){
             <ul class="navbar-nav ms-lg-auto mb-2 mb-lg-0 align-items-lg-center">
                 <li class="nav-item">
                     <a class="nav-link d-flex align-items-center gap-1" href="products.php">
-                        <i class="bi bi-shop"></i>
+                        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                            <path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h9A1.5 1.5 0 0 1 14 3.5V5h.5A.5.5 0 0 1 15 5.5v1a2.5 2.5 0 0 1-1 2V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8.5a2.5 2.5 0 0 1-1-2v-1A.5.5 0 0 1 1.5 5H2V3.5zM3.5 3a.5.5 0 0 0-.5.5V5h10V3.5a.5.5 0 0 0-.5-.5h-9zM2 6v.5a1.5 1.5 0 1 0 3 0V6H2zm4 0v.5a1.5 1.5 0 1 0 3 0V6H6zm4 0v.5a1.5 1.5 0 1 0 3 0V6h-3zM3 8.95V13h10V8.95a2.48 2.48 0 0 1-2-.95 2.49 2.49 0 0 1-3 0 2.49 2.49 0 0 1-3 0 2.48 2.48 0 0 1-2 .95z"/>
+                        </svg>
                         <span>Shop</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link d-flex align-items-center gap-1" href="cart.php">
-                        <i class="bi bi-cart3"></i>
+                        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                            <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .49.402L2.89 3H14.5a.5.5 0 0 1 .49.598l-1.5 7A.5.5 0 0 1 13 11H4a.5.5 0 0 1-.49-.402L1.61 2H.5A.5.5 0 0 1 0 1.5zM4.41 10h8.18l1.286-6H3.124L4.41 10zM5.5 13a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm6 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                        </svg>
                         <span>Cart</span>
                         <?php if ($cartCount > 0): ?>
                             <span class="badge text-bg-success ms-1"><?php echo $cartCount; ?></span>

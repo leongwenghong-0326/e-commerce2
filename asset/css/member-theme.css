@@ -1,0 +1,108 @@
+/* Shared member-side theme */
+:root {
+    --member-bg-start: #f6fcf8;
+    --member-bg-end: #edf6ff;
+    --member-surface: #ffffff;
+    --member-ink: #1b2530;
+    --member-muted: #6b7c8d;
+    --member-line: #dcebe4;
+    --member-accent: #0f8f6f;
+    --member-accent-strong: #0b6f56;
+    --member-radius-lg: 18px;
+    --member-radius-md: 12px;
+    --member-shadow: 0 12px 28px rgba(10, 36, 60, 0.08);
+}
+
+html,
+body {
+    font-family: 'Outfit', sans-serif;
+    color: var(--member-ink);
+    background:
+        radial-gradient(circle at 8% 8%, rgba(15, 143, 111, 0.12), transparent 45%),
+        radial-gradient(circle at 92% 92%, rgba(39, 124, 198, 0.10), transparent 42%),
+        linear-gradient(135deg, var(--member-bg-start), var(--member-bg-end));
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.section-title,
+.card-title {
+    font-family: 'Space Grotesk', sans-serif;
+    letter-spacing: -0.01em;
+}
+
+a {
+    color: var(--member-accent-strong);
+}
+
+a:hover {
+    color: var(--member-accent);
+}
+
+.card,
+.table,
+.alert,
+.list-group-item,
+.modal-content,
+.dropdown-menu {
+    border-radius: var(--member-radius-md);
+    border-color: var(--member-line);
+}
+
+.card,
+.table,
+.modal-content {
+    background: var(--member-surface);
+    box-shadow: var(--member-shadow);
+}
+
+.btn {
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.btn-primary,
+.btn-success,
+.btn-primary-custom {
+    background: linear-gradient(135deg, var(--member-accent), var(--member-accent-strong));
+    border-color: var(--member-accent-strong);
+}
+
+.btn-primary:hover,
+.btn-success:hover,
+.btn-primary-custom:hover {
+    background: linear-gradient(135deg, #12a57f, #0f8f6f);
+    border-color: #0f8f6f;
+}
+
+.form-control,
+.form-select {
+    border-radius: 10px;
+    border: 1px solid #d6e5df;
+    background: #ffffff;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: rgba(15, 143, 111, 0.45);
+    box-shadow: 0 0 0 0.2rem rgba(15, 143, 111, 0.15);
+}
+
+.badge {
+    border-radius: 999px;
+}
+
+.panel,
+.glass-panel,
+.summary-card,
+.cart-summary-card,
+.product-card {
+    border-radius: var(--member-radius-lg);
+    border: 1px solid var(--member-line);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: var(--member-shadow);
+}
