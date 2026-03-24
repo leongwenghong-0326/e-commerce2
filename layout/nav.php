@@ -5,6 +5,7 @@ require_once __DIR__ . '/../config/config.php';
 // Set default values first
 $userAvatar = 'asset/image/default_avatar.png';
 $userName = 'User';
+$cartCount = 0;
 
 if(isset($_SESSION['user_id'])){
     $sql = "SELECT u.UserId, up.FirstName, up.ProfilePhotoUrl 
@@ -21,6 +22,10 @@ if(isset($_SESSION['user_id'])){
         $userAvatar = $user['ProfilePhotoUrl'] ?: $userAvatar;
         $userName = $user['FirstName'] ?: $userName;
     }
+
+    $cartStmt = $pdo->prepare('SELECT COALESCE(SUM(Quantity), 0) FROM Carts WHERE UserId = :user_id');
+    $cartStmt->execute(['user_id' => $_SESSION['user_id']]);
+    $cartCount = (int) $cartStmt->fetchColumn();
 }
 
 ?>
@@ -45,12 +50,12 @@ if(isset($_SESSION['user_id'])){
 
         <div class="collapse navbar-collapse" id="navbarContent">
             <div class="nav-search-shell my-3 my-lg-0">
-                <form class="d-flex" action="index.php" method="get" role="search">
+                <form class="d-flex" action="products.php" method="get" role="search">
                     <input
                         class="form-control me-2"
                         type="search"
                         name="q"
-                        placeholder="Search"
+                        placeholder="Search products"
                         aria-label="Search"
                     >
                     <button class="btn btn-outline-success" type="submit">Search</button>
@@ -58,6 +63,21 @@ if(isset($_SESSION['user_id'])){
             </div>
 
             <ul class="navbar-nav ms-lg-auto mb-2 mb-lg-0 align-items-lg-center">
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center gap-1" href="products.php">
+                        <i class="bi bi-shop"></i>
+                        <span>Shop</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center gap-1" href="cart.php">
+                        <i class="bi bi-cart3"></i>
+                        <span>Cart</span>
+                        <?php if ($cartCount > 0): ?>
+                            <span class="badge text-bg-success ms-1"><?php echo $cartCount; ?></span>
+                        <?php endif; ?>
+                    </a>
+                </li>
                 <?php if(isset($_SESSION['user_id'])): ?>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -66,16 +86,28 @@ if(isset($_SESSION['user_id'])){
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                             <li><a class="dropdown-item" href="userProfile.php">Profile</a></li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2" href="my_orders.php">
+                                    <i class="bi bi-bag-check"></i>
+                                    <span>My Orders</span>
+                                </a>
+                            </li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="logout.php">Logout</a></li>
                         </ul>
                     </li>
                 <?php else: ?>
                     <li class="nav-item">
-                        <a class="nav-link" href="member_login.php">Login</a>
+                        <a class="nav-link d-flex align-items-center gap-1" href="member_login.php">
+                            <i class="bi bi-box-arrow-in-right"></i>
+                            <span>Login</span>
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="member_register.php">Register</a>
+                        <a class="nav-link d-flex align-items-center gap-1" href="member_register.php">
+                            <i class="bi bi-person-plus"></i>
+                            <span>Register</span>
+                        </a>
                     </li>
                 <?php endif; ?>
             </ul>

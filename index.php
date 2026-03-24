@@ -1,4 +1,92 @@
-<?php require_once 'config/config.php'; ?>
+<?php
+require_once 'config/config.php';
+
+$search = trim((string) ($_GET['q'] ?? ''));
+
+function hasProductColumn(PDO $pdo, string $columnName): bool
+{
+    static $columnCache = [];
+
+    if (array_key_exists($columnName, $columnCache)) {
+        return $columnCache[$columnName];
+    }
+
+    $stmt = $pdo->prepare(
+        "SELECT 1
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'Products'
+           AND COLUMN_NAME = ?
+         LIMIT 1"
+    );
+    $stmt->execute([$columnName]);
+    $columnCache[$columnName] = (bool) $stmt->fetchColumn();
+
+    return $columnCache[$columnName];
+}
+
+$hasCategoryColumn = hasProductColumn($pdo, 'Category');
+
+$categoryExpr = $hasCategoryColumn
+    ? "COALESCE(NULLIF(TRIM(p.Category), ''), 'Uncategorized')"
+    : "CASE
+            WHEN LOWER(p.ProductName) REGEXP 'phone|laptop|computer|headset|earphone|camera|tablet|electronic|charger|monitor' THEN 'Electronics'
+            WHEN LOWER(p.ProductName) REGEXP 'shirt|shoe|jean|dress|bag|fashion|watch|cap|jacket|hoodie' THEN 'Fashion'
+            WHEN LOWER(p.ProductName) REGEXP 'beauty|cream|lip|makeup|perfume|skin|shampoo|cosmetic' THEN 'Beauty'
+            WHEN LOWER(p.ProductName) REGEXP 'home|kitchen|chair|table|lamp|garden|pillow|bedding|sofa' THEN 'Home & Garden'
+            WHEN LOWER(p.ProductName) REGEXP 'sport|ball|fitness|yoga|gym|racket|bike|running' THEN 'Sports'
+            WHEN LOWER(p.ProductName) REGEXP 'book|novel|magazine|journal|study' THEN 'Books'
+            ELSE 'Uncategorized'
+       END";
+
+$sql = "SELECT
+            p.ProductId,
+            p.ProductName,
+            p.Description,
+            p.Price,
+            p.StockQuantity,
+            p.CreateDate,
+            $categoryExpr AS CategoryName,
+            (
+                SELECT ImageUrl
+                FROM ProductImages pi
+                WHERE pi.ProductId = p.ProductId
+                ORDER BY pi.IsPrimary DESC, pi.ImageId DESC
+                LIMIT 1
+            ) AS PrimaryImage
+        FROM Products p
+        WHERE 1=1";
+
+$params = [];
+if ($search !== '') {
+    $sql .= " AND (p.ProductName LIKE :keyword_name OR p.Description LIKE :keyword_desc)";
+    $keyword = '%' . $search . '%';
+    $params[':keyword_name'] = $keyword;
+    $params[':keyword_desc'] = $keyword;
+}
+
+$sql .= " ORDER BY CategoryName ASC, p.CreateDate DESC";
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$productsByCategory = [];
+foreach ($products as $product) {
+    $category = trim((string) ($product['CategoryName'] ?? 'Uncategorized'));
+    if ($category === '') {
+        $category = 'Uncategorized';
+    }
+
+    if (!isset($productsByCategory[$category])) {
+        $productsByCategory[$category] = [];
+    }
+    $productsByCategory[$category][] = $product;
+}
+
+$totalProductCount = count($products);
+$totalCategoryCount = count($productsByCategory);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,6 +98,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
     <style>
         body { font-family: 'Outfit', sans-serif; background: #f8fbf9; color: #1b2530; }
 
@@ -177,6 +266,71 @@
             opacity: .75;
         }
 
+        .category-block {
+            background: #fff;
+            border: 1px solid #e2ede9;
+            border-radius: 18px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .category-heading {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin: 0;
+        }
+        .category-meta {
+            font-size: 12px;
+            color: #6b7c8d;
+        }
+        .prod-card {
+            background: #fff;
+            border: 1px solid #e2ede9;
+            border-radius: 14px;
+            overflow: hidden;
+            height: 100%;
+            transition: transform .18s ease, box-shadow .18s ease;
+        }
+        .prod-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(10,36,60,.1);
+        }
+        .prod-img {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            object-fit: cover;
+            background: #eaf3ef;
+            border-bottom: 1px solid #e2ede9;
+        }
+        .prod-body {
+            padding: 12px;
+        }
+        .prod-name {
+            font-size: .95rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .prod-desc {
+            font-size: 12.5px;
+            color: #6b7c8d;
+            min-height: 38px;
+            margin-bottom: 8px;
+        }
+        .prod-price {
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .stock-chip {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            border-radius: 999px;
+            padding: 4px 8px;
+        }
+        .stock-chip.ok { color: #1c6c41; background: #def4e7; }
+        .stock-chip.low { color: #8a5a00; background: #fff2d6; }
+        .stock-chip.out { color: #9c1f1f; background: #fce2e2; }
+
         /* ── CTA banner ── */
         .cta-banner {
             background: linear-gradient(135deg, #0f8f6f, #0b6f56);
@@ -257,12 +411,12 @@
     <div class="container">
         <div class="row text-center g-0">
             <div class="col-6 col-md-3 stat-item border-end">
-                <div class="num">10K+</div>
+                <div class="num"><?php echo $totalProductCount; ?></div>
                 <div class="lbl">Products</div>
             </div>
             <div class="col-6 col-md-3 stat-item border-end">
-                <div class="num">50K+</div>
-                <div class="lbl">Happy Customers</div>
+                <div class="num"><?php echo $totalCategoryCount; ?></div>
+                <div class="lbl">Categories</div>
             </div>
             <div class="col-6 col-md-3 stat-item border-end">
                 <div class="num">99%</div>
@@ -324,58 +478,67 @@
                 <span class="section-label">Browse</span>
                 <h2 class="section-title mt-1 mb-0">Shop by category</h2>
             </div>
-            <a href="#" class="text-decoration-none text-success fw-semibold" style="font-size:14px;">View all <i class="fas fa-arrow-right ms-1"></i></a>
+            <a href="products.php" class="text-decoration-none text-success fw-semibold" style="font-size:14px;">View all <i class="fas fa-arrow-right ms-1"></i></a>
         </div>
-        <div class="row g-3">
-            <div class="col-6 col-md-4 col-lg-2">
-                <div class="category-card" style="background:linear-gradient(135deg,#fef3e2,#fde8c8);">
-                    <span class="cc-emoji">👗</span>
-                    <div class="cc-inner" style="background:linear-gradient(to top,rgba(180,90,10,.5),transparent);">
-                        <strong>Fashion</strong><span>1,200+ items</span>
+        <?php if (empty($productsByCategory)): ?>
+            <div class="alert alert-info mb-0">No products available yet.</div>
+        <?php else: ?>
+            <?php foreach ($productsByCategory as $categoryName => $categoryProducts): ?>
+                <section class="category-block">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                        <h3 class="category-heading"><?php echo htmlspecialchars($categoryName); ?></h3>
+                        <span class="category-meta"><?php echo count($categoryProducts); ?> product(s)</span>
                     </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-4 col-lg-2">
-                <div class="category-card" style="background:linear-gradient(135deg,#e8f0ff,#d5e4ff);">
-                    <span class="cc-emoji">💻</span>
-                    <div class="cc-inner" style="background:linear-gradient(to top,rgba(30,60,180,.5),transparent);">
-                        <strong>Electronics</strong><span>840+ items</span>
+                    <div class="row g-3">
+                        <?php foreach ($categoryProducts as $product): ?>
+                            <?php
+                            $image = trim((string) ($product['PrimaryImage'] ?? ''));
+                            $imageSrc = $image !== '' ? $image : 'asset/image/default_avatar.png';
+
+                            $desc = trim((string) ($product['Description'] ?? ''));
+                            if ($desc === '') {
+                                $desc = 'No description available.';
+                            }
+                            if (mb_strlen($desc) > 80) {
+                                $desc = mb_substr($desc, 0, 77) . '...';
+                            }
+
+                            $stock = max(0, (int) ($product['StockQuantity'] ?? 0));
+                            $stockClass = 'ok';
+                            $stockText = 'In stock';
+                            if ($stock <= 0) {
+                                $stockClass = 'out';
+                                $stockText = 'Out of stock';
+                            } elseif ($stock <= 5) {
+                                $stockClass = 'low';
+                                $stockText = 'Low stock';
+                            }
+                            ?>
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <article class="prod-card">
+                                    <a href="product_detail.php?id=<?php echo urlencode((string) $product['ProductId']); ?>">
+                                        <img class="prod-img" src="<?php echo htmlspecialchars($imageSrc); ?>" alt="<?php echo htmlspecialchars((string) $product['ProductName']); ?>">
+                                    </a>
+                                    <div class="prod-body">
+                                        <div class="prod-name"><?php echo htmlspecialchars((string) $product['ProductName']); ?></div>
+                                        <div class="prod-desc"><?php echo htmlspecialchars($desc); ?></div>
+                                        <div class="prod-price">RM <?php echo number_format((float) $product['Price'], 2); ?></div>
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <small class="text-muted">Stock: <?php echo $stock; ?></small>
+                                            <span class="stock-chip <?php echo $stockClass; ?>"><?php echo $stockText; ?></span>
+                                        </div>
+                                        <div class="d-grid gap-2">
+                                            <a class="btn btn-outline-primary btn-sm" href="product_detail.php?id=<?php echo urlencode((string) $product['ProductId']); ?>">View Details</a>
+                                            <a class="btn btn-success btn-sm <?php echo $stock <= 0 ? 'disabled' : ''; ?>" href="cart.php?add=<?php echo urlencode((string) $product['ProductId']); ?>&qty=1">Add to Cart</a>
+                                        </div>
+                                    </div>
+                                </article>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-4 col-lg-2">
-                <div class="category-card" style="background:linear-gradient(135deg,#fde8f0,#fcd0e0);">
-                    <span class="cc-emoji">💄</span>
-                    <div class="cc-inner" style="background:linear-gradient(to top,rgba(160,30,80,.5),transparent);">
-                        <strong>Beauty</strong><span>660+ items</span>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-4 col-lg-2">
-                <div class="category-card" style="background:linear-gradient(135deg,#e5f5e8,#caecce);">
-                    <span class="cc-emoji">🌿</span>
-                    <div class="cc-inner">
-                        <strong>Home & Garden</strong><span>980+ items</span>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-4 col-lg-2">
-                <div class="category-card" style="background:linear-gradient(135deg,#fff3e0,#ffe0b2);">
-                    <span class="cc-emoji">⚽</span>
-                    <div class="cc-inner" style="background:linear-gradient(to top,rgba(180,80,10,.5),transparent);">
-                        <strong>Sports</strong><span>520+ items</span>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-4 col-lg-2">
-                <div class="category-card" style="background:linear-gradient(135deg,#f3e5f5,#e1bee7);">
-                    <span class="cc-emoji">📚</span>
-                    <div class="cc-inner" style="background:linear-gradient(to top,rgba(100,30,140,.5),transparent);">
-                        <strong>Books</strong><span>340+ items</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+                </section>
+            <?php endforeach; ?>
+        <?php endif; ?>
     </div>
 </section>
 

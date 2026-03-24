@@ -50,6 +50,7 @@ CREATE TABLE Addresses (
 CREATE TABLE Products (
     ProductId CHAR(36) PRIMARY KEY,
     ProductName VARCHAR(255) NOT NULL,
+    Category VARCHAR(100) NULL,
     Description TEXT,
     Price DECIMAL(10, 2) NOT NULL,
     StockQuantity INT DEFAULT 0,

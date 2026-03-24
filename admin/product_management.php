@@ -47,6 +47,56 @@ if (!in_array($sortDir, ['asc', 'desc'], true)) {
 $projectRoot = dirname(__DIR__);
 $productUploadDirRel = 'uploads/products';
 $productUploadDirAbs = $projectRoot . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'products';
+$maxFileUploads = max(1, (int) ini_get('max_file_uploads'));
+$hasProductCategoryColumn = hasProductColumn($pdo, 'Category');
+
+$defaultCategoryOptions = [
+	'General',
+	'Beverages',
+	'Snacks',
+	'Electronic',
+	'Fashion',
+	'Beauty',
+	'Home & Garden',
+	'Sports',
+	'Books',
+];
+$categoryOptions = [];
+if ($hasProductCategoryColumn) {
+	$categoryOptionMap = [];
+	foreach ($defaultCategoryOptions as $defaultCategoryOption) {
+		$categoryOptionMap[strtolower($defaultCategoryOption)] = $defaultCategoryOption;
+	}
+	$existingCategoryStmt = $pdo->query("SELECT DISTINCT TRIM(Category) AS CategoryName FROM Products WHERE Category IS NOT NULL AND TRIM(Category) <> '' ORDER BY TRIM(Category) ASC");
+	$existingCategoryRows = $existingCategoryStmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+	foreach ($existingCategoryRows as $existingCategory) {
+		$existingCategory = trim((string) $existingCategory);
+		if ($existingCategory === '') {
+			continue;
+		}
+
+		$normalizedKey = strtolower($existingCategory);
+		if ($normalizedKey === 'electronics' || $normalizedKey === 'electronic') {
+			$existingCategory = 'Electronic';
+			$normalizedKey = 'electronic';
+		}
+
+		if (!isset($categoryOptionMap[$normalizedKey])) {
+			$categoryOptionMap[$normalizedKey] = $existingCategory;
+		}
+	}
+	$categoryOptions = array_values($categoryOptionMap);
+	natcasesort($categoryOptions);
+	$categoryOptions = array_values($categoryOptions);
+}
+
+$categoryFilter = trim((string) ($_GET['category_filter'] ?? 'all'));
+if (!$hasProductCategoryColumn) {
+	$categoryFilter = 'all';
+}
+if ($categoryFilter === 'uncategorized') {
+	$categoryFilter = 'all';
+}
 
 function hasProductColumn(PDO $pdo, string $columnName): bool
 {
@@ -116,6 +166,62 @@ function uploadProductImage(array $file, string $uploadDirAbs, string $uploadDir
 	return $uploadDirRel . '/' . $filename;
 }
 
+function uploadProductImages(array $files, string $uploadDirAbs, string $uploadDirRel): array
+{
+	$uploadedPaths = [];
+
+	if (!isset($files['name'])) {
+		return $uploadedPaths;
+	}
+
+	if (is_array($files['name'])) {
+		$total = count($files['name']);
+		for ($i = 0; $i < $total; $i++) {
+			$currentFile = [
+				'name' => $files['name'][$i] ?? '',
+				'type' => $files['type'][$i] ?? '',
+				'tmp_name' => $files['tmp_name'][$i] ?? '',
+				'error' => $files['error'][$i] ?? UPLOAD_ERR_NO_FILE,
+				'size' => $files['size'][$i] ?? 0,
+			];
+
+			$path = uploadProductImage($currentFile, $uploadDirAbs, $uploadDirRel);
+			if ($path !== '') {
+				$uploadedPaths[] = $path;
+			}
+		}
+
+		return $uploadedPaths;
+	}
+
+	$path = uploadProductImage($files, $uploadDirAbs, $uploadDirRel);
+	if ($path !== '') {
+		$uploadedPaths[] = $path;
+	}
+
+	return $uploadedPaths;
+}
+
+function countSelectedUploadFiles(array $files): int
+{
+	if (!isset($files['name'])) {
+		return 0;
+	}
+
+	if (is_array($files['name'])) {
+		$count = 0;
+		foreach ($files['name'] as $name) {
+			if (trim((string) $name) !== '') {
+				$count++;
+			}
+		}
+
+		return $count;
+	}
+
+	return trim((string) $files['name']) !== '' ? 1 : 0;
+}
+
 function deleteProductImageFile(string $relativePath, string $projectRoot, string $uploadDirRel): void
 {
 	$normalized = str_replace('\\', '/', trim($relativePath));
@@ -139,9 +245,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		$statusType = 'error';
 	} else {
 		try {
+			if ($action === 'delete_product_image') {
+				$productId = trim($_POST['product_id'] ?? '');
+				$imageId = trim($_POST['image_id'] ?? '');
+
+				if ($productId === '' || $imageId === '') {
+					throw new RuntimeException('Invalid image delete request.');
+				}
+
+				$targetImageStmt = $pdo->prepare('SELECT ImageId, ImageUrl, IsPrimary
+												   FROM ProductImages
+												   WHERE ImageId = :image_id
+												   AND ProductId = :product_id
+												   LIMIT 1');
+				$targetImageStmt->execute([
+					':image_id' => $imageId,
+					':product_id' => $productId,
+				]);
+				$targetImage = $targetImageStmt->fetch(PDO::FETCH_ASSOC);
+
+				if (!$targetImage) {
+					throw new RuntimeException('Image not found for this product.');
+				}
+
+				$pdo->beginTransaction();
+
+				$deleteImageStmt = $pdo->prepare('DELETE FROM ProductImages WHERE ImageId = :image_id AND ProductId = :product_id');
+				$deleteImageStmt->execute([
+					':image_id' => $imageId,
+					':product_id' => $productId,
+				]);
+
+				if ($deleteImageStmt->rowCount() === 0) {
+					$pdo->rollBack();
+					throw new RuntimeException('Image was not deleted. Please try again.');
+				}
+
+				if ((int) ($targetImage['IsPrimary'] ?? 0) === 1) {
+					$newPrimaryStmt = $pdo->prepare('SELECT ImageId
+													  FROM ProductImages
+													  WHERE ProductId = :product_id
+													  ORDER BY ImageId DESC
+													  LIMIT 1');
+					$newPrimaryStmt->execute([':product_id' => $productId]);
+					$newPrimaryId = (string) ($newPrimaryStmt->fetchColumn() ?: '');
+
+					if ($newPrimaryId !== '') {
+						$setPrimaryStmt = $pdo->prepare('UPDATE ProductImages SET IsPrimary = 1 WHERE ImageId = :image_id');
+						$setPrimaryStmt->execute([':image_id' => $newPrimaryId]);
+					}
+				}
+
+				$pdo->commit();
+
+				$imagePath = (string) ($targetImage['ImageUrl'] ?? '');
+				if ($imagePath !== '') {
+					deleteProductImageFile($imagePath, $projectRoot, $productUploadDirRel);
+				}
+
+				$query = http_build_query([
+					'status' => 'ok',
+					'message' => 'Product image deleted successfully.',
+					'edit' => $productId,
+				]);
+				header('Location: product_management.php?' . $query);
+				exit;
+			}
+
 			if ($action === 'add_product') {
 				$name = trim($_POST['product_name'] ?? '');
 				$description = trim($_POST['description'] ?? '');
+				$category = $hasProductCategoryColumn ? trim((string) ($_POST['category'] ?? '')) : '';
 				$priceRaw = trim($_POST['price'] ?? '');
 				$stockRaw = trim($_POST['stock_quantity'] ?? '');
 
@@ -154,28 +328,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 				if ($stockRaw === '' || !preg_match('/^\d+$/', $stockRaw)) {
 					throw new RuntimeException('Stock quantity must be a valid non-negative integer.');
 				}
+				if ($hasProductCategoryColumn && $category === '') {
+					throw new RuntimeException('Category is required.');
+				}
+				if ($hasProductCategoryColumn && !in_array($category, $categoryOptions, true)) {
+					throw new RuntimeException('Please select a valid category.');
+				}
 
-				$imagePath = uploadProductImage($_FILES['product_image'] ?? [], $productUploadDirAbs, $productUploadDirRel);
+				$selectedImageCount = countSelectedUploadFiles($_FILES['product_images'] ?? []);
+				if ($selectedImageCount > $maxFileUploads) {
+					throw new RuntimeException('Too many images selected. You can upload up to ' . $maxFileUploads . ' images at once.');
+				}
+
+				$imagePaths = uploadProductImages($_FILES['product_images'] ?? [], $productUploadDirAbs, $productUploadDirRel);
 				$productId = (string) $pdo->query('SELECT UUID()')->fetchColumn();
 
-				$insertSql = 'INSERT INTO Products (ProductId, ProductName, Description, Price, StockQuantity, CreateDate)
-							  VALUES (:product_id, :name, :description, :price, :stock, NOW())';
+				if ($hasProductCategoryColumn) {
+					$insertSql = 'INSERT INTO Products (ProductId, ProductName, Category, Description, Price, StockQuantity, CreateDate)
+									  VALUES (:product_id, :name, :category, :description, :price, :stock, NOW())';
+				} else {
+					$insertSql = 'INSERT INTO Products (ProductId, ProductName, Description, Price, StockQuantity, CreateDate)
+									  VALUES (:product_id, :name, :description, :price, :stock, NOW())';
+				}
 				$insertStmt = $pdo->prepare($insertSql);
-				$insertStmt->execute([
+				$insertParams = [
 					':product_id' => $productId,
 					':name' => $name,
 					':description' => $description,
 					':price' => number_format((float) $priceRaw, 2, '.', ''),
 					':stock' => (int) $stockRaw,
-				]);
+				];
+				if ($hasProductCategoryColumn) {
+					$insertParams[':category'] = $category;
+				}
+				$insertStmt->execute($insertParams);
 
-				if ($imagePath !== '') {
+				if (!empty($imagePaths)) {
 					$imageInsert = $pdo->prepare('INSERT INTO ProductImages (ImageId, ProductId, ImageUrl, IsPrimary)
-											 VALUES (UUID(), :product_id, :image_url, 1)');
-					$imageInsert->execute([
-						':product_id' => $productId,
-						':image_url' => $imagePath,
-					]);
+										 VALUES (UUID(), :product_id, :image_url, :is_primary)');
+					foreach ($imagePaths as $index => $imagePath) {
+						$imageInsert->execute([
+							':product_id' => $productId,
+							':image_url' => $imagePath,
+							':is_primary' => $index === 0 ? 1 : 0,
+						]);
+					}
 				}
 
 				$query = http_build_query([
@@ -190,6 +387,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 				$productId = trim($_POST['product_id'] ?? '');
 				$name = trim($_POST['product_name'] ?? '');
 				$description = trim($_POST['description'] ?? '');
+				$category = $hasProductCategoryColumn ? trim((string) ($_POST['category'] ?? '')) : '';
 				$priceRaw = trim($_POST['price'] ?? '');
 				$stockRaw = trim($_POST['stock_quantity'] ?? '');
 
@@ -205,23 +403,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 				if ($stockRaw === '' || !preg_match('/^\d+$/', $stockRaw)) {
 					throw new RuntimeException('Stock quantity must be a valid non-negative integer.');
 				}
+				if ($hasProductCategoryColumn && $category === '') {
+					throw new RuntimeException('Category is required.');
+				}
+				if ($hasProductCategoryColumn && !in_array($category, $categoryOptions, true)) {
+					throw new RuntimeException('Please select a valid category.');
+				}
 
-				$newImagePath = uploadProductImage($_FILES['product_image'] ?? [], $productUploadDirAbs, $productUploadDirRel);
+				$selectedImageCount = countSelectedUploadFiles($_FILES['product_images'] ?? []);
+				if ($selectedImageCount > $maxFileUploads) {
+					throw new RuntimeException('Too many images selected. You can upload up to ' . $maxFileUploads . ' images at once.');
+				}
 
-				$updateSql = 'UPDATE Products
-							  SET ProductName = :name,
-								  Description = :description,
-								  Price = :price,
-								  StockQuantity = :stock
-							  WHERE ProductId = :product_id';
+				$newImagePaths = uploadProductImages($_FILES['product_images'] ?? [], $productUploadDirAbs, $productUploadDirRel);
+
+				if ($hasProductCategoryColumn) {
+					$updateSql = 'UPDATE Products
+								  SET ProductName = :name,
+									  Category = :category,
+									  Description = :description,
+									  Price = :price,
+									  StockQuantity = :stock
+								  WHERE ProductId = :product_id';
+				} else {
+					$updateSql = 'UPDATE Products
+								  SET ProductName = :name,
+									  Description = :description,
+									  Price = :price,
+									  StockQuantity = :stock
+								  WHERE ProductId = :product_id';
+				}
 				$updateStmt = $pdo->prepare($updateSql);
-				$updateStmt->execute([
+				$updateParams = [
 					':name' => $name,
 					':description' => $description,
 					':price' => number_format((float) $priceRaw, 2, '.', ''),
 					':stock' => (int) $stockRaw,
 					':product_id' => $productId,
-				]);
+				];
+				if ($hasProductCategoryColumn) {
+					$updateParams[':category'] = $category;
+				}
+				$updateStmt->execute($updateParams);
 
 				if ($updateStmt->rowCount() === 0) {
 					$existsStmt = $pdo->prepare('SELECT COUNT(*) FROM Products WHERE ProductId = :product_id');
@@ -231,28 +454,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 					}
 				}
 
-				if ($newImagePath !== '') {
-					$oldImageStmt = $pdo->prepare('SELECT ImageUrl FROM ProductImages WHERE ProductId = :product_id AND IsPrimary = 1 LIMIT 1');
-					$oldImageStmt->execute([':product_id' => $productId]);
-					$oldImagePath = (string) ($oldImageStmt->fetchColumn() ?: '');
-
+				if (!empty($newImagePaths)) {
 					$pdo->beginTransaction();
 
-					$unsetPrimaryStmt = $pdo->prepare('UPDATE ProductImages SET IsPrimary = 0 WHERE ProductId = :product_id');
-					$unsetPrimaryStmt->execute([':product_id' => $productId]);
+					$primaryCountStmt = $pdo->prepare('SELECT COUNT(*) FROM ProductImages WHERE ProductId = :product_id AND IsPrimary = 1');
+					$primaryCountStmt->execute([':product_id' => $productId]);
+					$hasPrimary = (int) $primaryCountStmt->fetchColumn() > 0;
 
 					$insertImageStmt = $pdo->prepare('INSERT INTO ProductImages (ImageId, ProductId, ImageUrl, IsPrimary)
-													VALUES (UUID(), :product_id, :image_url, 1)');
-					$insertImageStmt->execute([
-						':product_id' => $productId,
-						':image_url' => $newImagePath,
-					]);
+													VALUES (UUID(), :product_id, :image_url, :is_primary)');
+					foreach ($newImagePaths as $index => $imagePath) {
+						$insertImageStmt->execute([
+							':product_id' => $productId,
+							':image_url' => $imagePath,
+							':is_primary' => (!$hasPrimary && $index === 0) ? 1 : 0,
+						]);
+					}
 
 					$pdo->commit();
-
-					if ($oldImagePath !== '') {
-						deleteProductImageFile($oldImagePath, $projectRoot, $productUploadDirRel);
-					}
 				}
 
 				$query = http_build_query([
@@ -341,6 +560,7 @@ if ($editId !== '') {
 	$editStmt = $pdo->prepare('SELECT
 								ProductId,
 								ProductName,
+								' . ($hasProductCategoryColumn ? 'Category,' : "'' AS Category,") . '
 								Description,
 								Price,
 								StockQuantity,
@@ -358,6 +578,15 @@ if ($editId !== '') {
 	$editStmt->execute([':id' => $editId]);
 	$editProduct = $editStmt->fetch(PDO::FETCH_ASSOC) ?: null;
 
+	if ($editProduct !== null) {
+		$imagesStmt = $pdo->prepare('SELECT ImageId, ImageUrl, IsPrimary
+									  FROM ProductImages
+									  WHERE ProductId = :id
+									  ORDER BY IsPrimary DESC, ImageId DESC');
+		$imagesStmt->execute([':id' => $editId]);
+		$editProduct['Images'] = $imagesStmt->fetchAll(PDO::FETCH_ASSOC);
+	}
+
 	if ($editProduct === null) {
 		$statusMessage = 'Selected product was not found.';
 		$statusType = 'error';
@@ -366,6 +595,7 @@ if ($editId !== '') {
 
 try {
 	$hasProductActiveColumn = hasProductColumn($pdo, 'IsActive');
+	$availableCategories = $categoryOptions;
 	if ($hasProductActiveColumn) {
 		$allowedSortColumns = [
 			'newest' => 'p.CreateDate',
@@ -385,6 +615,11 @@ try {
 			$statusFilter = 'all';
 		}
 	}
+	if ($hasProductCategoryColumn) {
+		$allowedSortColumns['category'] = 'p.Category';
+	} else {
+		$categoryFilter = 'all';
+	}
 
 	if (!isset($allowedSortColumns[$sortBy])) {
 		$sortBy = 'newest';
@@ -402,7 +637,9 @@ try {
 		'low_stock' => 0,
 	];
 
-	$listSql = 'SELECT p.ProductId, p.ProductName, p.Description, p.Price, p.StockQuantity, p.CreateDate,
+	$listSql = 'SELECT p.ProductId, p.ProductName,
+					' . ($hasProductCategoryColumn ? "COALESCE(NULLIF(TRIM(p.Category), ''), 'Uncategorized') AS CategoryName," : "'Uncategorized' AS CategoryName,") . '
+					p.Description, p.Price, p.StockQuantity, p.CreateDate,
 					' . ($hasProductActiveColumn ? 'p.IsActive,' : '1 AS IsActive,') . '
 					(
 						SELECT ImageUrl
@@ -457,6 +694,12 @@ try {
 		$params[':max_price'] = number_format($maxPrice, 2, '.', '');
 	}
 
+	if ($hasProductCategoryColumn && $categoryFilter !== 'all') {
+		$listSql .= ' AND p.Category = :category_filter';
+		$listCountSql .= ' AND p.Category = :category_filter';
+		$params[':category_filter'] = $categoryFilter;
+	}
+
 	if ($hasProductActiveColumn) {
 		if ($statusFilter === 'active') {
 			$listSql .= ' AND p.IsActive = 1';
@@ -479,8 +722,40 @@ try {
 	$listStmt->execute($params);
 	$products = $listStmt->fetchAll(PDO::FETCH_ASSOC);
 
+	$productImagesByProductId = [];
+	if (!empty($products)) {
+		$productIds = [];
+		foreach ($products as $productRow) {
+			$productIds[] = (string) ($productRow['ProductId'] ?? '');
+		}
+		$productIds = array_values(array_filter(array_unique($productIds)));
+
+		if (!empty($productIds)) {
+			$placeholders = implode(',', array_fill(0, count($productIds), '?'));
+			$imageListStmt = $pdo->prepare('SELECT ProductId, ImageUrl, IsPrimary
+											FROM ProductImages
+											WHERE ProductId IN (' . $placeholders . ')
+											ORDER BY ProductId, IsPrimary DESC, ImageId DESC');
+			$imageListStmt->execute($productIds);
+			while ($imageRow = $imageListStmt->fetch(PDO::FETCH_ASSOC)) {
+				$productId = (string) ($imageRow['ProductId'] ?? '');
+				if ($productId === '') {
+					continue;
+				}
+				if (!isset($productImagesByProductId[$productId])) {
+					$productImagesByProductId[$productId] = [];
+				}
+				$productImagesByProductId[$productId][] = [
+					'ImageUrl' => (string) ($imageRow['ImageUrl'] ?? ''),
+					'IsPrimary' => (int) ($imageRow['IsPrimary'] ?? 0),
+				];
+			}
+		}
+	}
+
 	$queryBase = [
 		'q' => $search,
+		'category_filter' => $categoryFilter,
 		'stock_filter' => $stockFilter,
 		'status_filter' => $statusFilter,
 		'min_price' => $minPrice !== null ? number_format($minPrice, 2, '.', '') : '',
@@ -494,6 +769,9 @@ try {
 
 		if (($params['q'] ?? '') === '') {
 			unset($params['q']);
+		}
+		if (($params['category_filter'] ?? 'all') === 'all') {
+			unset($params['category_filter']);
 		}
 		if (($params['stock_filter'] ?? 'all') === 'all') {
 			unset($params['stock_filter']);
@@ -532,6 +810,7 @@ try {
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Product Management || E-Commerce</title>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -561,25 +840,34 @@ try {
 				radial-gradient(circle at 15% 20%, rgba(218, 90, 27, 0.2), transparent 42%),
 				radial-gradient(circle at 85% 82%, rgba(184, 64, 9, 0.22), transparent 35%),
 				linear-gradient(145deg, #f7f0df 0%, #f4ede4 48%, #efe5d2 100%);
-			padding: 24px;
+			padding: 0;
 		}
 
 		.shell {
-			width: min(1300px, 100%);
-			margin: 0 auto;
+			width: 100%;
+			min-width: 1120px;
+			margin: 0;
 			display: grid;
 			grid-template-columns: 280px minmax(0, 1fr);
-			border: 1px solid var(--line);
-			border-radius: 26px;
+			border: none;
+			border-radius: 0;
 			overflow: hidden;
-			box-shadow: 0 18px 50px rgba(49, 36, 20, 0.15);
+			box-shadow: none;
 			background: var(--paper);
 			backdrop-filter: blur(8px);
+		}
+
+		.shell-scroll {
+			width: 100%;
+			overflow-x: auto;
+			overflow-y: visible;
+			padding-bottom: 8px;
 		}
 
 		.sidebar {
 			padding: 30px 22px;
 			border-right: 1px solid var(--line);
+			min-height: 100vh;
 			background:
 				linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.12)),
 				repeating-linear-gradient(135deg, transparent, transparent 12px, rgba(31, 26, 21, 0.03) 12px, rgba(31, 26, 21, 0.03) 24px);
@@ -967,6 +1255,29 @@ try {
 			gap: 12px;
 		}
 
+		.image-grid {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 10px;
+		}
+
+		.image-chip {
+			display: grid;
+			gap: 6px;
+			justify-items: center;
+		}
+
+		.image-chip .btn {
+			width: 100%;
+			padding: 6px 8px;
+			font-size: 12px;
+		}
+
+		.image-chip span {
+			font-size: 12px;
+			color: rgba(31, 26, 21, 0.72);
+		}
+
 		.current-image-meta {
 			font-size: 13px;
 			color: rgba(31, 26, 21, 0.74);
@@ -981,9 +1292,231 @@ try {
 			background: rgba(255, 255, 255, 0.8);
 		}
 
+		.zoomable-image {
+			cursor: zoom-in;
+			transition: transform 140ms ease, box-shadow 140ms ease;
+		}
+
+		.zoomable-image:hover {
+			transform: translateY(-1px);
+			box-shadow: 0 8px 18px rgba(31, 26, 21, 0.2);
+		}
+
+		.table-image-group {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+		}
+
+		.table-image-group .table-image {
+			width: 44px;
+			height: 44px;
+			border-radius: 8px;
+		}
+
+		.image-count-badge {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			min-width: 26px;
+			height: 26px;
+			padding: 0 8px;
+			border-radius: 999px;
+			font-size: 12px;
+			font-weight: 700;
+			color: var(--ink);
+			border: 1px solid var(--line);
+			background: rgba(255, 255, 255, 0.85);
+		}
+
+		button.image-count-badge {
+			cursor: zoom-in;
+			font-family: inherit;
+		}
+
+		.product-image-card {
+			width: 120px;
+			border: 1px solid var(--line);
+			border-radius: 12px;
+			padding: 8px;
+			background: rgba(255, 255, 255, 0.9);
+			display: grid;
+			gap: 8px;
+		}
+
+		.product-image-primary {
+			width: 100%;
+			height: 84px;
+			border-radius: 10px;
+			object-fit: cover;
+			border: 1px solid var(--line);
+			background: rgba(255, 255, 255, 0.8);
+		}
+
+		.product-image-secondary {
+			display: grid;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			gap: 6px;
+		}
+
+		.product-image-secondary img {
+			width: 100%;
+			height: 30px;
+			border-radius: 6px;
+			object-fit: cover;
+			border: 1px solid var(--line);
+			background: rgba(255, 255, 255, 0.8);
+		}
+
+		.product-image-secondary .image-count-badge {
+			min-width: 0;
+			width: 100%;
+			height: 30px;
+			border-radius: 6px;
+			padding: 0;
+		}
+
 		.no-image {
 			font-size: 12px;
 			color: rgba(31, 26, 21, 0.6);
+		}
+
+		.upload-help {
+			font-size: 12px;
+			color: rgba(31, 26, 21, 0.72);
+			margin-top: 6px;
+		}
+
+		.upload-list {
+			margin-top: 8px;
+			display: grid;
+			gap: 6px;
+		}
+
+		.upload-list-item {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 10px;
+			padding: 8px 10px;
+			border: 1px solid var(--line);
+			border-radius: 10px;
+			background: rgba(255, 255, 255, 0.82);
+			font-size: 13px;
+		}
+
+		.upload-list-item button {
+			border: 1px solid var(--line);
+			border-radius: 8px;
+			background: #fff;
+			padding: 4px 8px;
+			font-size: 12px;
+			cursor: pointer;
+		}
+
+		.upload-list-item button:hover {
+			border-color: var(--accent);
+			color: var(--accent);
+		}
+
+		.lightbox {
+			position: fixed;
+			inset: 0;
+			background: rgba(12, 10, 8, 0.82);
+			display: none;
+			align-items: center;
+			justify-content: center;
+			padding: 24px;
+			z-index: 9999;
+		}
+
+		.lightbox.open {
+			display: flex;
+		}
+
+		.lightbox-content {
+			position: relative;
+			max-width: min(1100px, 96vw);
+			max-height: 92vh;
+			border-radius: 16px;
+			overflow: hidden;
+			box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+			background: #111;
+		}
+
+		.lightbox-image {
+			display: block;
+			max-width: min(1100px, 96vw);
+			max-height: 92vh;
+			width: auto;
+			height: auto;
+			object-fit: contain;
+		}
+
+		.lightbox-nav {
+			position: absolute;
+			top: 50%;
+			transform: translateY(-50%);
+			width: 42px;
+			height: 42px;
+			border: 1px solid rgba(255, 255, 255, 0.5);
+			border-radius: 999px;
+			background: rgba(0, 0, 0, 0.45);
+			color: #fff;
+			font-size: 18px;
+			cursor: pointer;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.lightbox-nav:hover {
+			background: rgba(0, 0, 0, 0.7);
+		}
+
+		.lightbox-nav:disabled {
+			opacity: 0.35;
+			cursor: not-allowed;
+		}
+
+		.lightbox-nav.prev {
+			left: 10px;
+		}
+
+		.lightbox-nav.next {
+			right: 10px;
+		}
+
+		.lightbox-counter {
+			position: absolute;
+			left: 50%;
+			bottom: 12px;
+			transform: translateX(-50%);
+			padding: 4px 10px;
+			border-radius: 999px;
+			font-size: 12px;
+			font-weight: 600;
+			color: #fff;
+			background: rgba(0, 0, 0, 0.55);
+		}
+
+		.lightbox-close {
+			position: absolute;
+			top: 10px;
+			right: 10px;
+			width: 36px;
+			height: 36px;
+			border: 1px solid rgba(255, 255, 255, 0.5);
+			border-radius: 999px;
+			background: rgba(0, 0, 0, 0.45);
+			color: #fff;
+			font-size: 20px;
+			line-height: 1;
+			cursor: pointer;
+		}
+
+		.lightbox-close:hover {
+			background: rgba(0, 0, 0, 0.7);
 		}
 
 		.pagination {
@@ -1051,15 +1584,6 @@ try {
 		}
 
 		@media (max-width: 960px) {
-			.shell {
-				grid-template-columns: 1fr;
-			}
-
-			.sidebar {
-				border-right: none;
-				border-bottom: 1px solid var(--line);
-			}
-
 			.stats {
 				grid-template-columns: 1fr;
 			}
@@ -1067,26 +1591,17 @@ try {
 
 		@media (max-width: 640px) {
 			body {
-				padding: 14px;
+				padding: 0;
 			}
 
-			.main,
-			.sidebar {
-				padding: 22px 16px;
-			}
-
-			.topbar {
-				align-items: flex-start;
-				flex-direction: column;
-			}
-
-			.search-form {
-				max-width: none;
+			.shell {
+				min-width: 1040px;
 			}
 		}
 	</style>
 </head>
 <body>
+<div class="shell-scroll">
 <div class="shell">
 	<aside class="sidebar">
 		<span class="brand-tag">Admin Portal</span>
@@ -1180,21 +1695,51 @@ try {
 					>
 				</div>
 
+				<?php if ($hasProductCategoryColumn): ?>
+				<div class="field">
+					<label for="category">Category</label>
+					<select id="category" name="category" required>
+						<option value="" disabled <?php echo ((string) ($editProduct['Category'] ?? '')) === '' ? 'selected' : ''; ?>>Select category</option>
+						<?php foreach ($categoryOptions as $categoryOption): ?>
+							<option value="<?php echo htmlspecialchars((string) $categoryOption); ?>" <?php echo ((string) ($editProduct['Category'] ?? '')) === (string) $categoryOption ? 'selected' : ''; ?>><?php echo htmlspecialchars((string) $categoryOption); ?></option>
+						<?php endforeach; ?>
+					</select>
+				</div>
+				<?php endif; ?>
+
 				<div class="field full">
 					<label for="description">Description</label>
 					<textarea id="description" name="description" placeholder="Optional product details..."><?php echo htmlspecialchars((string) ($editProduct['Description'] ?? '')); ?></textarea>
 				</div>
 
 				<div class="field full">
-					<label for="product_image">Product Image (JPG, PNG, WEBP, GIF up to 5MB)</label>
-					<input id="product_image" type="file" name="product_image" accept="image/jpeg,image/png,image/webp,image/gif">
+					<label for="product_images">Product Images (JPG, PNG, WEBP, GIF up to 5MB each, max <?php echo $maxFileUploads; ?> files per upload)</label>
+					<input id="product_images" type="file" name="product_images[]" accept="image/jpeg,image/png,image/webp,image/gif" multiple>
+					<div class="upload-help">You can select files multiple times before submit. New selections are added to the current queue.</div>
+					<div id="upload_selected_count" class="upload-help"></div>
+					<div id="upload_list" class="upload-list"></div>
 				</div>
 
-				<?php if (!empty($editProduct['PrimaryImageUrl'])): ?>
+				<?php if (!empty($editProduct['Images']) && is_array($editProduct['Images'])): ?>
 					<div class="field full">
-						<div class="current-image-wrap">
-							<img class="image-preview" src="../<?php echo htmlspecialchars((string) $editProduct['PrimaryImageUrl']); ?>" alt="Current product image">
-							<div class="current-image-meta">Current primary image. Upload a new file to replace it.</div>
+						<div class="current-image-wrap" style="align-items: flex-start;">
+							<div class="image-grid">
+								<?php foreach ($editProduct['Images'] as $image): ?>
+									<div class="image-chip">
+										<img class="image-preview zoomable-image" src="../<?php echo htmlspecialchars((string) ($image['ImageUrl'] ?? '')); ?>" alt="Product image" data-zoomable="1">
+										<span><?php echo !empty($image['IsPrimary']) ? 'Primary' : 'Gallery'; ?></span>
+										<button
+											class="btn btn-danger js-delete-image"
+											type="button"
+											data-image-id="<?php echo htmlspecialchars((string) ($image['ImageId'] ?? '')); ?>"
+											data-product-id="<?php echo htmlspecialchars((string) $editProduct['ProductId']); ?>"
+										>
+											<i class="bi bi-trash"></i> Delete Image
+										</button>
+									</div>
+								<?php endforeach; ?>
+							</div>
+							<div class="current-image-meta">Uploading new files will add to this gallery. Existing images stay unchanged.</div>
 						</div>
 					</div>
 				<?php endif; ?>
@@ -1226,6 +1771,14 @@ try {
 						<option value="low_stock" <?php echo $stockFilter === 'low_stock' ? 'selected' : ''; ?>>Low Stock (1-5)</option>
 						<option value="out_of_stock" <?php echo $stockFilter === 'out_of_stock' ? 'selected' : ''; ?>>Out of Stock</option>
 					</select>
+					<?php if ($hasProductCategoryColumn): ?>
+						<select name="category_filter">
+							<option value="all" <?php echo $categoryFilter === 'all' ? 'selected' : ''; ?>>All Categories</option>
+							<?php foreach ($availableCategories as $availableCategory): ?>
+								<option value="<?php echo htmlspecialchars((string) $availableCategory); ?>" <?php echo $categoryFilter === (string) $availableCategory ? 'selected' : ''; ?>><?php echo htmlspecialchars((string) $availableCategory); ?></option>
+							<?php endforeach; ?>
+						</select>
+					<?php endif; ?>
 					<?php if ($hasProductActiveColumn): ?>
 						<select name="status_filter">
 							<option value="all" <?php echo $statusFilter === 'all' ? 'selected' : ''; ?>>All Statuses</option>
@@ -1238,6 +1791,9 @@ try {
 					<select name="sort_by">
 						<option value="newest" <?php echo $sortBy === 'newest' ? 'selected' : ''; ?>>Newest</option>
 						<option value="name" <?php echo $sortBy === 'name' ? 'selected' : ''; ?>>Name</option>
+						<?php if ($hasProductCategoryColumn): ?>
+							<option value="category" <?php echo $sortBy === 'category' ? 'selected' : ''; ?>>Category</option>
+						<?php endif; ?>
 						<option value="price" <?php echo $sortBy === 'price' ? 'selected' : ''; ?>>Price</option>
 						<option value="stock" <?php echo $sortBy === 'stock' ? 'selected' : ''; ?>>Stock</option>
 						<?php if ($hasProductActiveColumn): ?>
@@ -1249,7 +1805,7 @@ try {
 						<option value="asc" <?php echo $sortDir === 'asc' ? 'selected' : ''; ?>>Asc</option>
 					</select>
 					<button class="btn btn-primary" type="submit"><i class="bi bi-search"></i> Search</button>
-					<?php if ($search !== '' || $stockFilter !== 'all' || $statusFilter !== 'all' || $minPriceRaw !== '' || $maxPriceRaw !== '' || $sortBy !== 'newest' || $sortDir !== 'desc'): ?>
+					<?php if ($search !== '' || $categoryFilter !== 'all' || $stockFilter !== 'all' || $statusFilter !== 'all' || $minPriceRaw !== '' || $maxPriceRaw !== '' || $sortBy !== 'newest' || $sortDir !== 'desc'): ?>
 						<a class="btn btn-outline" href="product_management.php"><i class="bi bi-x-circle"></i> Clear</a>
 					<?php endif; ?>
 				</form>
@@ -1261,12 +1817,17 @@ try {
 					<p>No products found for the current filter.</p>
 				</div>
 			<?php else: ?>
-				<div class="table-wrap">
-					<table>
+				<div class="table-wrap table-responsive">
+					<table class="table table-hover align-middle mb-0">
 						<thead>
 							<tr>
 								<th>Image</th>
 								<th class="sortable"><a href="<?php echo htmlspecialchars($buildListUrl(['sort_by' => 'name', 'sort_dir' => ($sortBy === 'name' && $sortDir === 'asc') ? 'desc' : 'asc', 'page' => 1])); ?>">Name<?php if ($sortBy === 'name') echo $sortDir === 'asc' ? ' ▲' : ' ▼'; ?></a></th>
+								<?php if ($hasProductCategoryColumn): ?>
+									<th class="sortable"><a href="<?php echo htmlspecialchars($buildListUrl(['sort_by' => 'category', 'sort_dir' => ($sortBy === 'category' && $sortDir === 'asc') ? 'desc' : 'asc', 'page' => 1])); ?>">Category<?php if ($sortBy === 'category') echo $sortDir === 'asc' ? ' ▲' : ' ▼'; ?></a></th>
+								<?php else: ?>
+									<th>Category</th>
+								<?php endif; ?>
 								<th>Description</th>
 								<th class="sortable"><a href="<?php echo htmlspecialchars($buildListUrl(['sort_by' => 'price', 'sort_dir' => ($sortBy === 'price' && $sortDir === 'asc') ? 'desc' : 'asc', 'page' => 1])); ?>">Price<?php if ($sortBy === 'price') echo $sortDir === 'asc' ? ' ▲' : ' ▼'; ?></a></th>
 								<th class="sortable"><a href="<?php echo htmlspecialchars($buildListUrl(['sort_by' => 'stock', 'sort_dir' => ($sortBy === 'stock' && $sortDir === 'asc') ? 'desc' : 'asc', 'page' => 1])); ?>">Stock<?php if ($sortBy === 'stock') echo $sortDir === 'asc' ? ' ▲' : ' ▼'; ?></a></th>
@@ -1290,20 +1851,81 @@ try {
 								$description = '-';
 							}
 
+							$productId = (string) ($product['ProductId'] ?? '');
+							$productImages = $productImagesByProductId[$productId] ?? [];
+							$primaryImage = null;
+							$secondaryImages = [];
+
+							if (!empty($productImages)) {
+								$primaryImage = $productImages[0];
+								$secondaryImages = array_slice($productImages, 1);
+							}
+
+							$secondaryDisplay = array_slice($secondaryImages, 0, 3);
+							$extraImageCount = max(0, count($secondaryImages) - count($secondaryDisplay));
+							$firstHiddenImage = null;
+							if ($extraImageCount > 0) {
+								$firstHiddenImage = $secondaryImages[count($secondaryDisplay)] ?? null;
+							}
+
+							$gallerySources = [];
+							foreach ($productImages as $galleryImage) {
+								$galleryUrl = trim((string) ($galleryImage['ImageUrl'] ?? ''));
+								if ($galleryUrl !== '') {
+									$gallerySources[] = '../' . $galleryUrl;
+								}
+							}
+							if (empty($gallerySources) && !empty($product['PrimaryImageUrl'])) {
+								$gallerySources[] = '../' . (string) $product['PrimaryImageUrl'];
+							}
+							$galleryJson = htmlspecialchars(json_encode($gallerySources, JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8');
+
 							$editUrl = $buildListUrl([
-								'edit' => (string) $product['ProductId'],
+								'edit' => $productId,
 								'page' => $currentPage,
 							]);
 							?>
 							<tr>
 								<td>
-									<?php if (!empty($product['PrimaryImageUrl'])): ?>
-										<img class="table-image" src="../<?php echo htmlspecialchars((string) $product['PrimaryImageUrl']); ?>" alt="Product image">
+									<?php if ($primaryImage !== null): ?>
+										<div class="product-image-card">
+											<img
+												class="product-image-primary zoomable-image"
+												src="../<?php echo htmlspecialchars((string) ($primaryImage['ImageUrl'] ?? '')); ?>"
+												alt="Primary product image"
+												data-zoomable="1"
+												data-gallery="<?php echo $galleryJson; ?>"
+												data-gallery-index="0"
+											>
+											<?php if (!empty($secondaryDisplay) || $extraImageCount > 0): ?>
+												<div class="product-image-secondary">
+													<?php foreach ($secondaryDisplay as $secondaryIndex => $img): ?>
+														<img class="zoomable-image" src="../<?php echo htmlspecialchars((string) ($img['ImageUrl'] ?? '')); ?>" alt="Product gallery image" data-zoomable="1" data-gallery="<?php echo $galleryJson; ?>" data-gallery-index="<?php echo 1 + $secondaryIndex; ?>">
+													<?php endforeach; ?>
+													<?php if ($extraImageCount > 0): ?>
+														<button
+															type="button"
+															class="image-count-badge"
+															data-zoom-src="../<?php echo htmlspecialchars((string) ($firstHiddenImage['ImageUrl'] ?? '')); ?>"
+															data-zoom-alt="Hidden product image"
+															data-gallery="<?php echo $galleryJson; ?>"
+															data-gallery-index="<?php echo 1 + count($secondaryDisplay); ?>"
+															title="View hidden image"
+														>+<?php echo $extraImageCount; ?></button>
+													<?php endif; ?>
+												</div>
+											<?php endif; ?>
+										</div>
+									<?php elseif (!empty($product['PrimaryImageUrl'])): ?>
+										<div class="product-image-card">
+											<img class="product-image-primary zoomable-image" src="../<?php echo htmlspecialchars((string) $product['PrimaryImageUrl']); ?>" alt="Primary product image" data-zoomable="1" data-gallery="<?php echo $galleryJson; ?>" data-gallery-index="0">
+										</div>
 									<?php else: ?>
 										<span class="no-image">No image</span>
 									<?php endif; ?>
 								</td>
 								<td><?php echo htmlspecialchars((string) $product['ProductName']); ?></td>
+								<td><?php echo htmlspecialchars((string) ($product['CategoryName'] ?? 'Uncategorized')); ?></td>
 								<td><?php echo htmlspecialchars($description); ?></td>
 								<td>RM <?php echo number_format((float) $product['Price'], 2); ?></td>
 								<td>
@@ -1376,5 +1998,305 @@ try {
 		</section>
 	</main>
 </div>
+</div>
+<?php if ($editProduct): ?>
+<form id="delete_image_form" method="post" action="<?php echo htmlspecialchars($buildListUrl()); ?>" style="display:none;">
+	<input type="hidden" name="csrf" value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
+	<input type="hidden" name="action" value="delete_product_image">
+	<input type="hidden" id="delete_image_product_id" name="product_id" value="<?php echo htmlspecialchars((string) $editProduct['ProductId']); ?>">
+	<input type="hidden" id="delete_image_image_id" name="image_id" value="">
+</form>
+<?php endif; ?>
+<div id="product_image_lightbox" class="lightbox" aria-hidden="true">
+	<div class="lightbox-content">
+		<button id="product_image_lightbox_prev" class="lightbox-nav prev" type="button" aria-label="Previous image"><i class="bi bi-chevron-left"></i></button>
+		<button id="product_image_lightbox_next" class="lightbox-nav next" type="button" aria-label="Next image"><i class="bi bi-chevron-right"></i></button>
+		<button id="product_image_lightbox_close" class="lightbox-close" type="button" aria-label="Close image viewer">&times;</button>
+		<img id="product_image_lightbox_img" class="lightbox-image" src="" alt="Product image preview">
+		<div id="product_image_lightbox_counter" class="lightbox-counter"></div>
+	</div>
+</div>
+<script>
+(function () {
+	const input = document.getElementById('product_images');
+	const list = document.getElementById('upload_list');
+	const countLabel = document.getElementById('upload_selected_count');
+	if (!input || !list || !countLabel || typeof DataTransfer === 'undefined') {
+		return;
+	}
+
+	const maxFiles = <?php echo (int) $maxFileUploads; ?>;
+	const dt = new DataTransfer();
+
+	function fileKey(file) {
+		return [file.name, file.size, file.lastModified, file.type].join('|');
+	}
+
+	function formatSize(bytes) {
+		if (!Number.isFinite(bytes) || bytes < 0) {
+			return '0 B';
+		}
+		if (bytes < 1024) {
+			return bytes + ' B';
+		}
+		const kb = bytes / 1024;
+		if (kb < 1024) {
+			return kb.toFixed(1) + ' KB';
+		}
+		return (kb / 1024).toFixed(2) + ' MB';
+	}
+
+	function syncInput() {
+		input.files = dt.files;
+	}
+
+	function renderList() {
+		list.innerHTML = '';
+		const files = Array.from(dt.files);
+		countLabel.textContent = files.length > 0
+			? files.length + ' image(s) selected'
+			: 'No images selected yet.';
+
+		files.forEach(function (file, index) {
+			const row = document.createElement('div');
+			row.className = 'upload-list-item';
+
+			const text = document.createElement('span');
+			text.textContent = file.name + ' (' + formatSize(file.size) + ')';
+
+			const removeBtn = document.createElement('button');
+			removeBtn.type = 'button';
+			removeBtn.textContent = 'Remove';
+			removeBtn.addEventListener('click', function () {
+				const remaining = Array.from(dt.files).filter(function (_, i) {
+					return i !== index;
+				});
+				dt.items.clear();
+				remaining.forEach(function (f) {
+					dt.items.add(f);
+				});
+				syncInput();
+				renderList();
+			});
+
+			row.appendChild(text);
+			row.appendChild(removeBtn);
+			list.appendChild(row);
+		});
+	}
+
+	input.addEventListener('change', function () {
+		const existing = new Set(Array.from(dt.files).map(fileKey));
+		const picked = Array.from(input.files || []);
+
+		picked.forEach(function (file) {
+			if (dt.files.length >= maxFiles) {
+				return;
+			}
+			const key = fileKey(file);
+			if (!existing.has(key)) {
+				dt.items.add(file);
+				existing.add(key);
+			}
+		});
+
+		syncInput();
+		renderList();
+	});
+
+	renderList();
+})();
+
+(function () {
+	const lightbox = document.getElementById('product_image_lightbox');
+	const lightboxImg = document.getElementById('product_image_lightbox_img');
+	const closeBtn = document.getElementById('product_image_lightbox_close');
+	const prevBtn = document.getElementById('product_image_lightbox_prev');
+	const nextBtn = document.getElementById('product_image_lightbox_next');
+	const counter = document.getElementById('product_image_lightbox_counter');
+	const zoomableImages = document.querySelectorAll('img[data-zoomable="1"]');
+	const zoomButtons = document.querySelectorAll('[data-zoom-src]');
+
+	if (!lightbox || !lightboxImg || !closeBtn || !prevBtn || !nextBtn || !counter || (zoomableImages.length === 0 && zoomButtons.length === 0)) {
+		return;
+	}
+
+	let currentGallery = [];
+	let currentIndex = 0;
+
+	function parseGallery(raw) {
+		if (!raw) {
+			return [];
+		}
+		try {
+			const parsed = JSON.parse(raw);
+			if (!Array.isArray(parsed)) {
+				return [];
+			}
+			return parsed.filter(function (item) {
+				return typeof item === 'string' && item.trim() !== '';
+			});
+		} catch (error) {
+			return [];
+		}
+	}
+
+	function syncLightboxView(alt) {
+		if (!currentGallery[currentIndex]) {
+			return;
+		}
+		lightboxImg.src = currentGallery[currentIndex];
+		lightboxImg.alt = alt || 'Product image preview';
+		counter.textContent = currentGallery.length > 1
+			? 'Image ' + (currentIndex + 1) + ' of ' + currentGallery.length
+			: 'Image 1 of 1';
+		prevBtn.disabled = currentGallery.length <= 1 || currentIndex === 0;
+		nextBtn.disabled = currentGallery.length <= 1 || currentIndex >= currentGallery.length - 1;
+	}
+
+	function openLightbox(src, alt, gallery, index) {
+		const normalizedGallery = Array.isArray(gallery)
+			? gallery.filter(function (item) {
+				return typeof item === 'string' && item.trim() !== '';
+			})
+			: [];
+
+		if (normalizedGallery.length === 0 && src) {
+			currentGallery = [src];
+			currentIndex = 0;
+		} else if (normalizedGallery.length > 0) {
+			currentGallery = normalizedGallery;
+			const requestedIndex = Number.isFinite(index) ? index : 0;
+			currentIndex = Math.max(0, Math.min(requestedIndex, currentGallery.length - 1));
+		} else {
+			return;
+		}
+
+		syncLightboxView(alt);
+		lightbox.classList.add('open');
+		lightbox.setAttribute('aria-hidden', 'false');
+		document.body.style.overflow = 'hidden';
+	}
+
+	function closeLightbox() {
+		lightbox.classList.remove('open');
+		lightbox.setAttribute('aria-hidden', 'true');
+		lightboxImg.src = '';
+		currentGallery = [];
+		currentIndex = 0;
+		document.body.style.overflow = '';
+	}
+
+	function moveLightbox(step) {
+		if (currentGallery.length <= 1) {
+			return;
+		}
+		const nextIndex = currentIndex + step;
+		if (nextIndex < 0 || nextIndex >= currentGallery.length) {
+			return;
+		}
+		currentIndex = nextIndex;
+		syncLightboxView(lightboxImg.alt || 'Product image preview');
+	}
+
+	zoomableImages.forEach(function (img) {
+		img.addEventListener('click', function () {
+			const gallery = parseGallery(img.getAttribute('data-gallery') || '');
+			const index = parseInt(img.getAttribute('data-gallery-index') || '0', 10);
+			openLightbox(img.getAttribute('src') || '', img.getAttribute('alt') || 'Product image', gallery, Number.isNaN(index) ? 0 : index);
+		});
+	});
+
+	zoomButtons.forEach(function (button) {
+		button.addEventListener('click', function () {
+			const gallery = parseGallery(button.getAttribute('data-gallery') || '');
+			const index = parseInt(button.getAttribute('data-gallery-index') || '0', 10);
+			openLightbox(button.getAttribute('data-zoom-src') || '', button.getAttribute('data-zoom-alt') || 'Product image', gallery, Number.isNaN(index) ? 0 : index);
+		});
+	});
+
+	prevBtn.addEventListener('click', function () {
+		moveLightbox(-1);
+	});
+
+	nextBtn.addEventListener('click', function () {
+		moveLightbox(1);
+	});
+
+	closeBtn.addEventListener('click', closeLightbox);
+	lightbox.addEventListener('click', function (event) {
+		if (event.target === lightbox) {
+			closeLightbox();
+		}
+	});
+
+	document.addEventListener('keydown', function (event) {
+		if (event.key === 'Escape' && lightbox.classList.contains('open')) {
+			closeLightbox();
+			return;
+		}
+
+		if (!lightbox.classList.contains('open')) {
+			return;
+		}
+
+		if (event.key === 'ArrowLeft') {
+			moveLightbox(-1);
+		}
+
+		if (event.key === 'ArrowRight') {
+			moveLightbox(1);
+		}
+	});
+})();
+
+(function () {
+	const deleteForm = document.getElementById('delete_image_form');
+	const imageIdInput = document.getElementById('delete_image_image_id');
+	const productIdInput = document.getElementById('delete_image_product_id');
+	const deleteButtons = document.querySelectorAll('.js-delete-image');
+
+	if (!deleteForm || !imageIdInput || !productIdInput || deleteButtons.length === 0) {
+		return;
+	}
+
+	deleteButtons.forEach(function (button) {
+		button.addEventListener('click', function () {
+			const imageId = button.getAttribute('data-image-id') || '';
+			const productId = button.getAttribute('data-product-id') || '';
+			if (!imageId || !productId) {
+				return;
+			}
+
+			if (!window.confirm('Delete this image?')) {
+				return;
+			}
+
+			imageIdInput.value = imageId;
+			productIdInput.value = productId;
+			deleteForm.submit();
+		});
+	});
+})();
+
+(function () {
+	const textInputs = document.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea');
+	const fileInputs = document.querySelectorAll('input[type="file"]');
+	const selects = document.querySelectorAll('select');
+
+	textInputs.forEach(function (el) {
+		el.classList.add('form-control');
+	});
+
+	fileInputs.forEach(function (el) {
+		el.classList.add('form-control');
+	});
+
+	selects.forEach(function (el) {
+		el.classList.add('form-select');
+	});
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

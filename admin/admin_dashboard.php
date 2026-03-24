@@ -51,6 +51,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard || E-Commerce</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -80,21 +81,29 @@ try {
                 radial-gradient(circle at 15% 20%, rgba(218, 90, 27, 0.2), transparent 42%),
                 radial-gradient(circle at 85% 82%, rgba(184, 64, 9, 0.22), transparent 35%),
                 linear-gradient(145deg, #f7f0df 0%, #f4ede4 48%, #efe5d2 100%);
-            padding: 24px;
+            padding: 0;
         }
 
         .dashboard-shell {
-            width: min(1200px, 100%);
-            margin: 0 auto;
+            width: 100%;
+            min-width: 1080px;
+            margin: 0;
             display: grid;
             grid-template-columns: 280px minmax(0, 1fr);
-            border: 1px solid var(--line);
-            border-radius: 26px;
+            border: none;
+            border-radius: 0;
             overflow: hidden;
-            box-shadow: 0 18px 50px rgba(49, 36, 20, 0.15);
+            box-shadow: none;
             background: var(--paper);
             backdrop-filter: blur(8px);
             animation: settle 480ms ease-out;
+        }
+
+        .dashboard-scroll {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: visible;
+            padding-bottom: 8px;
         }
 
         @keyframes settle {
@@ -111,6 +120,7 @@ try {
         .sidebar {
             padding: 30px 22px;
             border-right: 1px solid var(--line);
+            min-height: 100vh;
             background:
                 linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.12)),
                 repeating-linear-gradient(135deg, transparent, transparent 12px, rgba(31, 26, 21, 0.03) 12px, rgba(31, 26, 21, 0.03) 24px);
@@ -250,15 +260,6 @@ try {
         }
 
         @media (max-width: 960px) {
-            .dashboard-shell {
-                grid-template-columns: 1fr;
-            }
-
-            .sidebar {
-                border-right: none;
-                border-bottom: 1px solid var(--line);
-            }
-
             .cards {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
@@ -266,26 +267,17 @@ try {
 
         @media (max-width: 640px) {
             body {
-                padding: 14px;
+                padding: 0;
             }
 
-            .main,
-            .sidebar {
-                padding: 22px 16px;
-            }
-
-            .cards {
-                grid-template-columns: 1fr;
-            }
-
-            .topbar {
-                align-items: flex-start;
-                flex-direction: column;
+            .dashboard-shell {
+                min-width: 1000px;
             }
         }
     </style>
 </head>
 <body>
+<div class="dashboard-scroll">
 <div class="dashboard-shell">
     <aside class="sidebar">
         <span class="brand-tag">Admin Portal</span>
@@ -333,5 +325,7 @@ try {
         </section>
     </main>
 </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
