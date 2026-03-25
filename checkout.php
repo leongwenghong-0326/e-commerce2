@@ -67,6 +67,13 @@ function buildShippingAddress(array $address, bool $hasDetailed): string
     return trim((string) ($address['FullAddress'] ?? ''));
 }
 
+function formatDeliveryEstimate(int $minDays, int $maxDays): string
+{
+    $from = (new DateTimeImmutable('today'))->modify('+' . max(0, $minDays) . ' day')->format('D, d M');
+    $to = (new DateTimeImmutable('today'))->modify('+' . max(0, $maxDays) . ' day')->format('D, d M');
+    return $from === $to ? $from : ($from . ' - ' . $to);
+}
+
 function redirectCheckout(string $status, string $message): void
 {
     $q = http_build_query([
@@ -109,11 +116,62 @@ $cartStmt = $pdo->prepare(
 $cartStmt->execute([':user_id' => $userId]);
 $cartItems = $cartStmt->fetchAll(PDO::FETCH_ASSOC);
 
+$shippingMethods = [
+    'standard' => [
+        'label' => 'Standard Delivery',
+        'fee' => 0.00,
+        'eta_min' => 3,
+        'eta_max' => 5,
+    ],
+    'express' => [
+        'label' => 'Express Delivery',
+        'fee' => 12.00,
+        'eta_min' => 1,
+        'eta_max' => 2,
+    ],
+    'scheduled' => [
+        'label' => 'Scheduled Delivery',
+        'fee' => 6.50,
+        'eta_min' => 2,
+        'eta_max' => 3,
+    ],
+];
+
+$paymentMethods = [
+    'cod' => [
+        'label' => 'Cash on Delivery',
+        'description' => 'Pay when your order arrives.',
+    ],
+    'fpx' => [
+        'label' => 'Online Banking (FPX)',
+        'description' => 'Secure online transfer (simulation mode).',
+    ],
+    'card' => [
+        'label' => 'Credit / Debit Card',
+        'description' => 'Card payment flow not yet integrated.',
+    ],
+];
+
+$selectedShippingMethodKey = trim((string) ($_POST['shipping_method'] ?? 'standard'));
+if (!isset($shippingMethods[$selectedShippingMethodKey])) {
+    $selectedShippingMethodKey = 'standard';
+}
+$selectedShippingMethod = $shippingMethods[$selectedShippingMethodKey];
+$deliveryEstimateText = formatDeliveryEstimate((int) $selectedShippingMethod['eta_min'], (int) $selectedShippingMethod['eta_max']);
+
+$selectedPaymentMethodKey = trim((string) ($_POST['payment_method'] ?? 'cod'));
+if (!isset($paymentMethods[$selectedPaymentMethodKey])) {
+    $selectedPaymentMethodKey = 'cod';
+}
+$selectedPaymentMethod = $paymentMethods[$selectedPaymentMethodKey];
+
+$orderNotesInput = trim((string) ($_POST['order_notes'] ?? ''));
+
 $subtotal = 0.0;
 foreach ($cartItems as $item) {
     $subtotal += ((float) $item['Price'] * (int) $item['Quantity']);
 }
-$shippingFee = 0.0;
+$shippingFee = (float) $selectedShippingMethod['fee'];
 $totalAmount = $subtotal + $shippingFee;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -144,6 +202,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('Selected address is invalid.');
         }
 
+        $shippingMethodKey = trim((string) ($_POST['shipping_method'] ?? ''));
+        if (!isset($shippingMethods[$shippingMethodKey])) {
+            throw new RuntimeException('Please choose a valid shipping method.');
+        }
+        $shippingMethod = $shippingMethods[$shippingMethodKey];
+
+        $paymentMethodKey = trim((string) ($_POST['payment_method'] ?? ''));
+        if (!isset($paymentMethods[$paymentMethodKey])) {
+            throw new RuntimeException('Please choose a valid payment method.');
+        }
+        $paymentMethod = $paymentMethods[$paymentMethodKey];
+
+        $orderNotes = trim((string) ($_POST['order_notes'] ?? ''));
+        if (mb_strlen($orderNotes) > 500) {
+            throw new RuntimeException('Order notes must be 500 characters or less.');
+        }
+
         $pdo->beginTransaction();
 
         $lockedItemsStmt = $pdo->prepare(
@@ -161,7 +236,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('Your cart is empty.');
         }
 
-        $finalTotal = 0.0;
+        $finalTotal = (float) $shippingMethod['fee'];
         foreach ($lockedItems as $line) {
             $qty = max(1, (int) $line['Quantity']);
             $stock = max(0, (int) $line['StockQuantity']);
@@ -174,6 +249,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $orderId = createUuidV4();
         $shippingAddress = buildShippingAddress($selectedAddress, $hasDetailedAddress);
+        $shippingSummaryLines = [
+            'Payment Method: ' . (string) $paymentMethod['label'],
+            'Shipping Method: ' . (string) $shippingMethod['label'] . ' (RM ' . number_format((float) $shippingMethod['fee'], 2) . ')',
+            'Estimated Delivery: ' . formatDeliveryEstimate((int) $shippingMethod['eta_min'], (int) $shippingMethod['eta_max']),
+        ];
+        if ($orderNotes !== '') {
+            $shippingSummaryLines[] = 'Order Notes: ' . $orderNotes;
+        }
+        $shippingAddress .= "\n\n" . implode("\n", $shippingSummaryLines);
 
         $insertOrder = $pdo->prepare(
             'INSERT INTO Orders (OrderId, UserId, AddressId, TotalAmount, OrderStatus, OrderDate, ShippingAddress)
@@ -389,6 +473,40 @@ $successOrderId = isset($_GET['success'], $_GET['order']) && $_GET['success'] ==
                                     </label>
                                 <?php endforeach; ?>
 
+                                <div class="mt-3">
+                                    <label for="shipping_method" class="form-label fw-semibold">Shipping Method</label>
+                                    <select class="form-select" id="shipping_method" name="shipping_method" required>
+                                        <?php foreach ($shippingMethods as $methodKey => $method): ?>
+                                            <?php
+                                            $methodEstimate = formatDeliveryEstimate((int) $method['eta_min'], (int) $method['eta_max']);
+                                            ?>
+                                            <option value="<?php echo htmlspecialchars($methodKey); ?>" data-fee="<?php echo htmlspecialchars(number_format((float) $method['fee'], 2, '.', '')); ?>" data-estimate="<?php echo htmlspecialchars($methodEstimate); ?>" <?php echo $methodKey === $selectedShippingMethodKey ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars((string) $method['label']); ?> - <?php echo (float) $method['fee'] > 0 ? 'RM ' . number_format((float) $method['fee'], 2) : 'Free'; ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <div class="small text-muted mt-1">
+                                        Estimated delivery: <span id="deliveryEstimateText"><?php echo htmlspecialchars($deliveryEstimateText); ?></span>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3">
+                                    <label for="payment_method" class="form-label fw-semibold">Payment Method</label>
+                                    <select class="form-select" id="payment_method" name="payment_method" required>
+                                        <?php foreach ($paymentMethods as $methodKey => $method): ?>
+                                            <option value="<?php echo htmlspecialchars($methodKey); ?>" data-label="<?php echo htmlspecialchars((string) $method['label']); ?>" <?php echo $methodKey === $selectedPaymentMethodKey ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars((string) $method['label']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <div class="small text-muted mt-1" id="paymentMethodHint"><?php echo htmlspecialchars((string) $selectedPaymentMethod['description']); ?></div>
+                                </div>
+
+                                <div class="mt-3">
+                                    <label for="order_notes" class="form-label fw-semibold">Order Notes (Optional)</label>
+                                    <textarea class="form-control" id="order_notes" name="order_notes" rows="3" maxlength="500" placeholder="Example: Leave at front door, call on arrival."><?php echo htmlspecialchars($orderNotesInput); ?></textarea>
+                                </div>
+
                                 <button type="button" id="openConfirmCheckout" class="btn btn-success mt-2" <?php echo empty($cartItems) ? 'disabled' : ''; ?> data-bs-toggle="modal" data-bs-target="#confirmCheckoutModal">Place Order</button>
                             </form>
                         <?php endif; ?>
@@ -422,14 +540,25 @@ $successOrderId = isset($_GET['success'], $_GET['order']) && $_GET['success'] ==
                             </div>
                             <div class="d-flex justify-content-between mt-1">
                                 <span>Shipping</span>
-                                <strong><?php echo $shippingFee > 0 ? 'RM ' . number_format($shippingFee, 2) : 'Free'; ?></strong>
+                                <strong id="shippingFeeText"><?php echo $shippingFee > 0 ? 'RM ' . number_format($shippingFee, 2) : 'Free'; ?></strong>
+                            </div>
+                            <div class="d-flex justify-content-between mt-1 small text-muted">
+                                <span>Delivery ETA</span>
+                                <strong id="summaryDeliveryEstimate"><?php echo htmlspecialchars($deliveryEstimateText); ?></strong>
+                            </div>
+                            <div class="d-flex justify-content-between mt-1 small text-muted">
+                                <span>Payment</span>
+                                <strong id="summaryPaymentMethod">
+                                    <i id="summaryPaymentIcon" class="bi bi-cash-coin me-1" aria-hidden="true"></i>
+                                    <span id="summaryPaymentMethodLabel"><?php echo htmlspecialchars((string) $selectedPaymentMethod['label']); ?></span>
+                                </strong>
                             </div>
                             <hr>
                             <div class="d-flex justify-content-between">
                                 <span class="fw-semibold">Total</span>
-                                <strong>RM <?php echo number_format($totalAmount, 2); ?></strong>
+                                <strong id="orderTotalText" data-subtotal="<?php echo htmlspecialchars(number_format($subtotal, 2, '.', '')); ?>">RM <?php echo number_format($totalAmount, 2); ?></strong>
                             </div>
-                            <div class="small text-muted mt-2">Payment is excluded in this basic version.</div>
+                            <div class="small text-muted mt-2">Payment gateway is not integrated yet; selected method is saved with your order.</div>
                         <?php endif; ?>
                     </div>
                 </section>
@@ -447,7 +576,16 @@ $successOrderId = isset($_GET['success'], $_GET['order']) && $_GET['success'] ==
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                Payment is excluded in this basic version. Confirm to create your order now?
+                <p class="mb-2">Payment gateway is not integrated yet. Confirm to create your order now?</p>
+                <div class="small text-muted">
+                    Payment Method:
+                    <span id="confirmPaymentMethod">
+                        <i id="confirmPaymentIcon" class="bi bi-cash-coin me-1" aria-hidden="true"></i>
+                        <span id="confirmPaymentMethodLabel"><?php echo htmlspecialchars((string) $selectedPaymentMethod['label']); ?></span>
+                    </span>
+                </div>
+                <div class="small text-muted">Shipping Method: <span id="confirmShippingMethod"><?php echo htmlspecialchars((string) $selectedShippingMethod['label']); ?></span></div>
+                <div class="small text-muted">Estimated Delivery: <span id="confirmDeliveryEstimate"><?php echo htmlspecialchars($deliveryEstimateText); ?></span></div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -463,6 +601,107 @@ $successOrderId = isset($_GET['success'], $_GET['order']) && $_GET['success'] ==
 (function () {
     const confirmBtn = document.getElementById('confirmPlaceOrder');
     const form = document.getElementById('checkoutForm');
+    const shippingSelect = document.getElementById('shipping_method');
+    const paymentSelect = document.getElementById('payment_method');
+    const shippingFeeText = document.getElementById('shippingFeeText');
+    const orderTotalText = document.getElementById('orderTotalText');
+    const deliveryEstimateText = document.getElementById('deliveryEstimateText');
+    const summaryDeliveryEstimate = document.getElementById('summaryDeliveryEstimate');
+    const summaryPaymentMethod = document.getElementById('summaryPaymentMethod');
+    const summaryPaymentIcon = document.getElementById('summaryPaymentIcon');
+    const summaryPaymentMethodLabel = document.getElementById('summaryPaymentMethodLabel');
+    const paymentMethodHint = document.getElementById('paymentMethodHint');
+    const confirmPaymentMethod = document.getElementById('confirmPaymentMethod');
+    const confirmPaymentIcon = document.getElementById('confirmPaymentIcon');
+    const confirmPaymentMethodLabel = document.getElementById('confirmPaymentMethodLabel');
+    const confirmShippingMethod = document.getElementById('confirmShippingMethod');
+    const confirmDeliveryEstimate = document.getElementById('confirmDeliveryEstimate');
+
+    function getPaymentIconClass(paymentValue) {
+        if (paymentValue === 'fpx') {
+            return 'bi-bank';
+        }
+        if (paymentValue === 'card') {
+            return 'bi-credit-card-2-front';
+        }
+        return 'bi-cash-coin';
+    }
+
+    function updateCheckoutSummary() {
+        if (!shippingSelect || !shippingFeeText || !orderTotalText) {
+            return;
+        }
+
+        const selectedOption = shippingSelect.options[shippingSelect.selectedIndex];
+        const fee = parseFloat(selectedOption.getAttribute('data-fee') || '0');
+        const estimate = selectedOption.getAttribute('data-estimate') || '';
+        const subtotal = parseFloat(orderTotalText.getAttribute('data-subtotal') || '0');
+        const total = subtotal + fee;
+
+        shippingFeeText.textContent = fee > 0 ? ('RM ' + fee.toFixed(2)) : 'Free';
+        orderTotalText.textContent = 'RM ' + total.toFixed(2);
+
+        if (deliveryEstimateText) {
+            deliveryEstimateText.textContent = estimate;
+        }
+        if (summaryDeliveryEstimate) {
+            summaryDeliveryEstimate.textContent = estimate;
+        }
+        if (confirmShippingMethod) {
+            confirmShippingMethod.textContent = selectedOption.text.split(' - ')[0];
+        }
+        if (confirmDeliveryEstimate) {
+            confirmDeliveryEstimate.textContent = estimate;
+        }
+    }
+
+    function updatePaymentSummary() {
+        if (!paymentSelect) {
+            return;
+        }
+
+        const selectedOption = paymentSelect.options[paymentSelect.selectedIndex];
+        const label = selectedOption.getAttribute('data-label') || selectedOption.text;
+        const iconClass = getPaymentIconClass(paymentSelect.value);
+
+        if (summaryPaymentMethod) {
+            if (summaryPaymentMethodLabel) {
+                summaryPaymentMethodLabel.textContent = label;
+            }
+            if (summaryPaymentIcon) {
+                summaryPaymentIcon.className = 'bi ' + iconClass + ' me-1';
+            }
+        }
+        if (confirmPaymentMethod) {
+            if (confirmPaymentMethodLabel) {
+                confirmPaymentMethodLabel.textContent = label;
+            }
+            if (confirmPaymentIcon) {
+                confirmPaymentIcon.className = 'bi ' + iconClass + ' me-1';
+            }
+        }
+
+        if (paymentMethodHint) {
+            if (paymentSelect.value === 'cod') {
+                paymentMethodHint.textContent = 'Pay when your order arrives.';
+            } else if (paymentSelect.value === 'fpx') {
+                paymentMethodHint.textContent = 'Secure online transfer (simulation mode).';
+            } else if (paymentSelect.value === 'card') {
+                paymentMethodHint.textContent = 'Card payment flow not yet integrated.';
+            }
+        }
+    }
+
+    if (shippingSelect) {
+        shippingSelect.addEventListener('change', updateCheckoutSummary);
+        updateCheckoutSummary();
+    }
+
+    if (paymentSelect) {
+        paymentSelect.addEventListener('change', updatePaymentSummary);
+        updatePaymentSummary();
+    }
+
     if (!confirmBtn || !form) {
         return;
     }

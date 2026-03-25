@@ -835,6 +835,7 @@ try {
 		<nav class="nav-links">
 			<a href="admin_dashboard.php"><i class="bi bi-speedometer2"></i> Control Panel</a>
 			<a href="product_management.php"><i class="bi bi-box"></i> Product Management</a>
+			<a href="category_management.php"><i class="bi bi-tags"></i> Category Management</a>
 			<a href="member_management.php" class="active"><i class="bi bi-people"></i> Member Management</a>
 			<a href="order_management.php"><i class="bi bi-cart"></i> Order Management</a>
 			<a href="admin_logout.php"><i class="bi bi-gear"></i> Logout</a>

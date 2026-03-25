@@ -13,6 +13,71 @@ if ($orderId === '') {
     exit();
 }
 
+function parseShippingSnapshot(string $shippingAddress): array
+{
+    $shippingAddress = trim($shippingAddress);
+    if ($shippingAddress === '') {
+        return [
+            'address' => '-',
+            'payment' => '',
+            'method' => '',
+            'estimate' => '',
+            'notes' => '',
+        ];
+    }
+
+    $parts = preg_split('/\R\R+/', $shippingAddress, 2);
+    $address = trim((string) ($parts[0] ?? ''));
+    $metaBlock = trim((string) ($parts[1] ?? ''));
+
+    $payment = '';
+    $method = '';
+    $estimate = '';
+    $notes = '';
+
+    if ($metaBlock !== '') {
+        $lines = preg_split('/\R+/', $metaBlock);
+        foreach ($lines as $line) {
+            $line = trim((string) $line);
+            if (str_starts_with($line, 'Payment Method: ')) {
+                $payment = trim(substr($line, strlen('Payment Method: ')));
+            } elseif (str_starts_with($line, 'Shipping Method: ')) {
+                $method = trim(substr($line, strlen('Shipping Method: ')));
+            } elseif (str_starts_with($line, 'Estimated Delivery: ')) {
+                $estimate = trim(substr($line, strlen('Estimated Delivery: ')));
+            } elseif (str_starts_with($line, 'Order Notes: ')) {
+                $notes = trim(substr($line, strlen('Order Notes: ')));
+            }
+        }
+    }
+
+    return [
+        'address' => $address !== '' ? $address : '-',
+        'payment' => $payment,
+        'method' => $method,
+        'estimate' => $estimate,
+        'notes' => $notes,
+    ];
+}
+
+function getPaymentIconClass(string $paymentLabel): string
+{
+    $normalized = strtolower(trim($paymentLabel));
+    if ($normalized === '') {
+        return 'bi-wallet2';
+    }
+    if (str_contains($normalized, 'fpx') || str_contains($normalized, 'online banking')) {
+        return 'bi-bank';
+    }
+    if (str_contains($normalized, 'card') || str_contains($normalized, 'credit') || str_contains($normalized, 'debit')) {
+        return 'bi-credit-card-2-front';
+    }
+    if (str_contains($normalized, 'cash')) {
+        return 'bi-cash-coin';
+    }
+    return 'bi-wallet2';
+}
+
 $orderStmt = $pdo->prepare(
     'SELECT
         o.OrderId,
@@ -69,6 +134,7 @@ foreach ($orderItems as $line) {
 
 $status = strtolower((string) ($order['OrderStatus'] ?? 'pending'));
 $statusClass = 'status-' . preg_replace('/[^a-z]/', '', $status);
+$shippingMeta = parseShippingSnapshot((string) ($order['ShippingAddress'] ?? ''));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -80,6 +146,7 @@ $statusClass = 'status-' . preg_replace('/[^a-z]/', '', $status);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
         <link rel="stylesheet" href="asset/css/member-theme.css">
     <style>
         :root {
@@ -221,7 +288,29 @@ $statusClass = 'status-' . preg_replace('/[^a-z]/', '', $status);
                 </div>
                 <div class="col-12">
                     <div class="small text-muted">Shipping Address</div>
-                    <div><?php echo htmlspecialchars((string) (($order['ShippingAddress'] ?? '') !== '' ? $order['ShippingAddress'] : '-')); ?></div>
+                    <div><?php echo nl2br(htmlspecialchars((string) $shippingMeta['address'])); ?></div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="small text-muted">Payment Method</div>
+                    <div>
+                        <?php if ($shippingMeta['payment'] !== ''): ?>
+                            <i class="bi <?php echo htmlspecialchars(getPaymentIconClass((string) $shippingMeta['payment'])); ?> me-1" aria-hidden="true"></i><?php echo htmlspecialchars((string) $shippingMeta['payment']); ?>
+                        <?php else: ?>
+                            -
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="small text-muted">Shipping Method</div>
+                    <div><?php echo htmlspecialchars((string) ($shippingMeta['method'] !== '' ? $shippingMeta['method'] : '-')); ?></div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="small text-muted">Delivery ETA</div>
+                    <div><?php echo htmlspecialchars((string) ($shippingMeta['estimate'] !== '' ? $shippingMeta['estimate'] : '-')); ?></div>
+                </div>
+                <div class="col-12">
+                    <div class="small text-muted">Order Notes</div>
+                    <div><?php echo nl2br(htmlspecialchars((string) ($shippingMeta['notes'] !== '' ? $shippingMeta['notes'] : '-'))); ?></div>
                 </div>
             </div>
         </div>

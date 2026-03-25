@@ -1,45 +1,21 @@
 <?php
 require_once 'config/config.php';
 
-$perPage = 12;
-
-function hasProductColumn(PDO $pdo, string $columnName): bool
-{
-    static $columnCache = [];
-    if (array_key_exists($columnName, $columnCache)) return $columnCache[$columnName];
-    $stmt = $pdo->prepare("SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Products' AND COLUMN_NAME = ? LIMIT 1");
-    $stmt->execute([$columnName]);
-    $columnCache[$columnName] = (bool) $stmt->fetchColumn();
-    return $columnCache[$columnName];
-}
-
-$hasCategoryColumn = hasProductColumn($pdo, 'Category');
-
-$categoryExpr = $hasCategoryColumn
-    ? "COALESCE(NULLIF(TRIM(p.Category), ''), 'Uncategorized')"
-    : "CASE
-        WHEN LOWER(p.ProductName) REGEXP 'phone|laptop|computer|headset' THEN 'Electronics'
-        WHEN LOWER(p.ProductName) REGEXP 'shirt|shoe|dress|fashion' THEN 'Fashion'
-        WHEN LOWER(p.ProductName) REGEXP 'beauty|cream|makeup' THEN 'Beauty'
-        WHEN LOWER(p.ProductName) REGEXP 'home|kitchen|garden' THEN 'Home & Garden'
-        WHEN LOWER(p.ProductName) REGEXP 'sport|fitness|yoga' THEN 'Sports'
-        WHEN LOWER(p.ProductName) REGEXP 'book|magazine' THEN 'Books'
-        ELSE 'Uncategorized'
-       END";
-
-$sql = "SELECT p.ProductId, p.ProductName, p.Description, p.Price, p.StockQuantity, p.CreateDate, $categoryExpr AS CategoryName, (SELECT ImageUrl FROM ProductImages pi WHERE pi.ProductId = p.ProductId ORDER BY pi.IsPrimary DESC, pi.ImageId DESC LIMIT 1) AS PrimaryImage FROM Products p ORDER BY p.CreateDate DESC LIMIT :limit";
-
-$stmt = $pdo->prepare($sql);
-$stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
-$stmt->execute();
-$products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-$productsByCategory = [];
-foreach ($products as $product) {
-    $category = trim((string) ($product['CategoryName'] ?? 'Uncategorized'));
-    if ($category === '') $category = 'Uncategorized';
-    if (!isset($productsByCategory[$category])) $productsByCategory[$category] = [];
-    $productsByCategory[$category][] = $product;
+$categoryCards = [];
+try {
+    $categorySql = "SELECT
+                        c.CategoryId,
+                        c.CategoryName,
+                        c.CategoryIcon,
+                        COALESCE(COUNT(p.ProductId), 0) AS TotalProducts
+                    FROM category c
+                    LEFT JOIN Products p ON p.CategoryId = c.CategoryId
+                    GROUP BY c.CategoryId, c.CategoryName, c.CategoryIcon
+                    ORDER BY c.CategoryName ASC";
+    $categoryStmt = $pdo->query($categorySql);
+    $categoryCards = $categoryStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+} catch (Throwable $e) {
+    $categoryCards = [];
 }
 ?>
 <!DOCTYPE html>
@@ -175,165 +151,118 @@ foreach ($products as $product) {
             line-height: 1.1;
         }
 
+        .category-showcase {
+            padding: 20px 0 10px;
+        }
+
+        .category-showcase-head {
+            animation: fadeUp 520ms ease-out both;
+        }
+
+        .category-card {
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 12px 26px rgba(10, 36, 60, 0.08);
+            height: 100%;
+        }
+
+        .category-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            border: 1px solid rgba(27, 37, 48, 0.14);
+            object-fit: cover;
+            background: #f3f8f5;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+
         #categories {
             background: transparent !important;
             padding-top: 28px !important;
         }
-        .browse-controls,
-        .category-block {
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: 18px;
-            backdrop-filter: blur(8px);
-            box-shadow: 0 12px 32px rgba(10, 36, 60, 0.08);
-        }
-        .browse-controls {
-            padding: 14px;
-            margin-bottom: 16px;
-        }
-        .browse-controls .form-label {
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: .05em;
-            text-transform: uppercase;
-            color: #445564;
-            margin-bottom: 5px;
-        }
-        .form-control,
-        .form-select {
-            border: 1px solid rgba(27, 37, 48, 0.2);
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.9);
-            min-height: 44px;
-            font-size: 14px;
-        }
-        .form-control:focus,
-        .form-select:focus {
-            border-color: rgba(15, 143, 111, 0.75);
-            box-shadow: 0 0 0 4px rgba(15, 143, 111, 0.15);
+
+        .category-showcase .section-title {
+            margin-bottom: 0;
         }
 
-        .category-chips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 14px;
-            position: sticky;
-            top: 10px;
-            z-index: 10;
-            background: rgba(255,255,255,.94);
+        .category-card {
             border: 1px solid var(--line);
-            border-radius: 14px;
-            padding: 8px;
-            backdrop-filter: blur(4px);
-        }
-        .category-chip {
-            display: inline-flex;
-            align-items: center;
-            text-decoration: none;
-            border: 1px solid var(--line);
-            background: rgba(255,255,255,.88);
-            color: #1f3845;
-            border-radius: 999px;
-            padding: 6px 12px;
-            font-size: 12px;
-            font-weight: 600;
-            transition: all .15s ease;
-        }
-        .category-chip:hover {
-            border-color: var(--accent);
-            color: var(--accent-strong);
-            background: rgba(15,143,111,.08);
-        }
-        .category-chip.active {
-            border-color: var(--accent);
-            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-            color: #fff;
-            box-shadow: 0 6px 16px rgba(11,111,86,.25);
-        }
-
-        .category-block {
-            padding: 16px;
-            margin-bottom: 16px;
-        }
-        .category-heading {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 1.2rem;
-            font-weight: 700;
-            margin: 0;
-        }
-        .category-meta {
-            font-size: 12px;
-            color: #5d6f7f;
-        }
-        .prod-card {
-            background: rgba(255, 255, 255, 0.92);
-            border: 1px solid var(--line);
-            border-radius: 14px;
-            overflow: hidden;
+            border-radius: 16px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.88));
+            box-shadow: 0 12px 26px rgba(10, 36, 60, 0.08);
             height: 100%;
-            transition: transform .18s ease, box-shadow .18s ease;
-        }
-        .prod-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 14px 24px rgba(10,36,60,.12);
-        }
-        .prod-img {
-            width: 100%;
-            aspect-ratio: 4 / 3;
-            object-fit: cover;
-            background: #eaf3ef;
-            border-bottom: 1px solid var(--line);
-        }
-        .prod-body { padding: 12px; }
-        .prod-name {
-            font-size: .95rem;
-            font-weight: 700;
-            margin-bottom: 6px;
-        }
-        .prod-desc {
-            font-size: 12.5px;
-            color: #607182;
-            min-height: 38px;
-            margin-bottom: 8px;
-        }
-        .prod-price {
-            font-weight: 700;
-            margin-bottom: 8px;
-            color: var(--accent-strong);
-        }
-        .stock-chip {
-            display: inline-block;
-            font-size: 11px;
-            font-weight: 700;
-            border-radius: 999px;
-            padding: 4px 8px;
-        }
-        .stock-chip.ok { color: #1c6c41; background: #def4e7; }
-        .stock-chip.low { color: #8a5a00; background: #fff2d6; }
-        .stock-chip.out { color: #9c1f1f; background: #fce2e2; }
-
-        .btn-success {
-            border: none;
-            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-            border-radius: 12px;
-            font-weight: 700;
-        }
-        .btn-success:hover {
-            box-shadow: 0 8px 16px rgba(11,111,86,.3);
+            transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+            opacity: 0;
+            transform: translateY(16px);
+            animation: fadeUp 560ms ease-out both;
+            animation-delay: calc(60ms * var(--i, 0));
         }
 
-        .pagination .page-link {
-            border-radius: 10px;
-            margin: 0 3px;
-            border: 1px solid var(--line);
-            color: #2a3f4f;
-            background: rgba(255,255,255,.86);
+        .category-card.variant-0 {
+            border-color: rgba(15, 143, 111, 0.35);
+            background: linear-gradient(180deg, rgba(232, 250, 244, 0.92), rgba(255, 255, 255, 0.9));
         }
-        .pagination .page-item.active .page-link {
-            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-            border-color: var(--accent);
-            color: #fff;
+
+        .category-card.variant-1 {
+            border-color: rgba(45, 118, 197, 0.35);
+            background: linear-gradient(180deg, rgba(234, 243, 255, 0.92), rgba(255, 255, 255, 0.9));
+        }
+
+        .category-card.variant-2 {
+            border-color: rgba(214, 112, 24, 0.35);
+            background: linear-gradient(180deg, rgba(255, 245, 232, 0.92), rgba(255, 255, 255, 0.9));
+        }
+
+        .category-card.variant-3 {
+            border-color: rgba(192, 82, 40, 0.35);
+            background: linear-gradient(180deg, rgba(255, 239, 234, 0.92), rgba(255, 255, 255, 0.9));
+        }
+
+        .category-card.variant-4 {
+            border-color: rgba(58, 138, 92, 0.35);
+            background: linear-gradient(180deg, rgba(236, 248, 238, 0.92), rgba(255, 255, 255, 0.9));
+        }
+
+        .category-card.variant-5 {
+            border-color: rgba(201, 146, 38, 0.35);
+            background: linear-gradient(180deg, rgba(255, 249, 234, 0.92), rgba(255, 255, 255, 0.9));
+        }
+
+        .category-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(15, 143, 111, 0.45);
+            box-shadow: 0 18px 30px rgba(10, 36, 60, 0.12);
+        }
+
+        .category-card .card-body {
+            padding: 1rem;
+        }
+
+        .category-card .card-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1f3845;
+        }
+
+        .category-card .card-text {
+            font-size: 0.86rem;
+            color: #607182 !important;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .cta-banner {
@@ -423,6 +352,15 @@ foreach ($products as $product) {
                 padding: 36px 24px;
             }
         }
+
+        @media (prefers-reduced-motion: reduce) {
+            .category-showcase-head,
+            .category-card {
+                animation: none !important;
+                opacity: 1;
+                transform: none;
+            }
+        }
     </style>
 </head>
 <body>
@@ -452,55 +390,44 @@ foreach ($products as $product) {
     </div>
 </section>
 
-<!-- ════════════════════ BROWSE PRODUCTS ════════════════════ -->
-<section class="py-5" id="categories">
+<!-- ════════════════════ CATEGORIES ════════════════════ -->
+<section class="category-showcase" id="categories">
     <div class="container">
-        <div class="d-flex justify-content-between align-items-end mb-3 flex-wrap gap-2">
+        <div class="d-flex justify-content-between align-items-end mb-3 flex-wrap gap-2 category-showcase-head">
             <div>
-                <span class="section-label">New Arrivals</span>
-                <h2 class="section-title mb-0">Featured Products</h2>
+                <span class="section-label">Browse by Category</span>
+                <h2 class="section-title mb-0">Shop Categories</h2>
             </div>
             <a href="products.php" class="btn btn-outline-custom">
-                <i class="bi bi-arrow-right"></i> View All
+                <i class="bi bi-arrow-right"></i> View Products
             </a>
         </div>
 
-        <?php foreach ($productsByCategory as $categoryName => $categoryProducts): ?>
-            <div class="category-block">
-                <h3 class="category-heading"><?php echo htmlspecialchars($categoryName); ?></h3>
-                <div class="row g-3">
-                    <?php foreach ($categoryProducts as $product): ?>
-                        <?php
-                        $stock = (int) ($product['StockQuantity'] ?? 0);
-                        $stockClass = $stock > 10 ? 'ok' : ($stock > 0 ? 'low' : 'out');
-                        $stockText = $stock > 10 ? 'In Stock' : ($stock > 0 ? 'Limited Stock' : 'Out of Stock');
-                        $image = trim((string) ($product['PrimaryImage'] ?? ''));
-                        $imageSrc = $image !== '' ? $image : 'asset/image/default_avatar.png';
-                        ?>
-                        <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
-                            <div class="prod-card">
-                                <img src="<?php echo htmlspecialchars($imageSrc); ?>" alt="<?php echo htmlspecialchars($product['ProductName']); ?>" class="prod-img">
-                                <div class="prod-body">
-                                    <h3 class="prod-name"><?php echo htmlspecialchars($product['ProductName']); ?></h3>
-                                    <p class="prod-desc"><?php echo htmlspecialchars(substr($product['Description'] ?? '', 0, 70)); ?></p>
-                                    <div class="prod-price">RM <?php echo number_format((float) $product['Price'], 2); ?></div>
-                                    <span class="stock-chip <?php echo $stockClass; ?>"><?php echo htmlspecialchars($stockText); ?></span>
-                                    <div class="mt-2">
-                                        <a href="product_detail.php?id=<?php echo (int) $product['ProductId']; ?>" class="btn btn-success btn-sm w-100">
-                                            <i class="bi bi-eye me-1"></i>View
-                                        </a>
-                                    </div>
+        <?php if (empty($categoryCards)): ?>
+            <div class="alert alert-light border" role="alert">No categories available yet.</div>
+        <?php else: ?>
+            <div class="row g-3">
+                <?php foreach ($categoryCards as $cardIndex => $categoryCard): ?>
+                    <?php
+                    $iconPath = trim((string) ($categoryCard['CategoryIcon'] ?? ''));
+                    $totalProducts = (int) ($categoryCard['TotalProducts'] ?? 0);
+                    ?>
+                    <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+                        <a class="card category-card variant-<?php echo (int) ($cardIndex % 6); ?> text-decoration-none text-reset" style="--i: <?php echo (int) $cardIndex; ?>;" href="products.php?category_filter=<?php echo urlencode((string) ($categoryCard['CategoryName'] ?? '')); ?>">
+                            <div class="card-body d-flex gap-3 align-items-center">
+                                <?php if ($iconPath !== ''): ?>
+                                    <img src="<?php echo htmlspecialchars($iconPath); ?>" alt="Category icon" class="category-icon">
+                                <?php else: ?>
+                                    <span class="category-icon"><i class="bi bi-tags"></i></span>
+                                <?php endif; ?>
+                                <div>
+                                    <h5 class="card-title mb-1"><?php echo htmlspecialchars((string) ($categoryCard['CategoryName'] ?? 'Unnamed')); ?></h5>
+                                    <p class="card-text text-muted mb-0"><?php echo $totalProducts; ?> related product<?php echo $totalProducts === 1 ? '' : 's'; ?></p>
                                 </div>
                             </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        <?php endforeach; ?>
-
-        <?php if (empty($productsByCategory)): ?>
-            <div class="browse-controls text-center">
-                <p class="text-muted">No products available yet. <a href="products.php">Browse all products</a></p>
+                        </a>
+                    </div>
+                <?php endforeach; ?>
             </div>
         <?php endif; ?>
     </div>

@@ -10,6 +10,71 @@ $userId = (string) $_SESSION['user_id'];
 $currentPage = max(1, (int) ($_GET['page'] ?? 1));
 $itemsPerPage = 10;
 
+function parseShippingSnapshot(string $shippingAddress): array
+{
+    $shippingAddress = trim($shippingAddress);
+    if ($shippingAddress === '') {
+        return [
+            'address' => '-',
+            'payment' => '',
+            'method' => '',
+            'estimate' => '',
+            'notes' => '',
+        ];
+    }
+
+    $parts = preg_split('/\R\R+/', $shippingAddress, 2);
+    $address = trim((string) ($parts[0] ?? ''));
+    $metaBlock = trim((string) ($parts[1] ?? ''));
+
+    $payment = '';
+    $method = '';
+    $estimate = '';
+    $notes = '';
+
+    if ($metaBlock !== '') {
+        $lines = preg_split('/\R+/', $metaBlock);
+        foreach ($lines as $line) {
+            $line = trim((string) $line);
+            if (str_starts_with($line, 'Payment Method: ')) {
+                $payment = trim(substr($line, strlen('Payment Method: ')));
+            } elseif (str_starts_with($line, 'Shipping Method: ')) {
+                $method = trim(substr($line, strlen('Shipping Method: ')));
+            } elseif (str_starts_with($line, 'Estimated Delivery: ')) {
+                $estimate = trim(substr($line, strlen('Estimated Delivery: ')));
+            } elseif (str_starts_with($line, 'Order Notes: ')) {
+                $notes = trim(substr($line, strlen('Order Notes: ')));
+            }
+        }
+    }
+
+    return [
+        'address' => $address !== '' ? $address : '-',
+        'payment' => $payment,
+        'method' => $method,
+        'estimate' => $estimate,
+        'notes' => $notes,
+    ];
+}
+
+function getPaymentIconClass(string $paymentLabel): string
+{
+    $normalized = strtolower(trim($paymentLabel));
+    if ($normalized === '') {
+        return 'bi-wallet2';
+    }
+    if (str_contains($normalized, 'fpx') || str_contains($normalized, 'online banking')) {
+        return 'bi-bank';
+    }
+    if (str_contains($normalized, 'card') || str_contains($normalized, 'credit') || str_contains($normalized, 'debit')) {
+        return 'bi-credit-card-2-front';
+    }
+    if (str_contains($normalized, 'cash')) {
+        return 'bi-cash-coin';
+    }
+    return 'bi-wallet2';
+}
+
 $countStmt = $pdo->prepare('SELECT COUNT(*) FROM Orders WHERE UserId = :user_id');
 $countStmt->execute([':user_id' => $userId]);
 $totalOrders = (int) $countStmt->fetchColumn();
@@ -58,6 +123,7 @@ $orders = $orderStmt->fetchAll(PDO::FETCH_ASSOC);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
         <link rel="stylesheet" href="asset/css/member-theme.css">
     <style>
         :root {
@@ -149,6 +215,7 @@ $orders = $orderStmt->fetchAll(PDO::FETCH_ASSOC);
             $status = strtolower((string) ($order['OrderStatus'] ?? 'pending'));
             $statusClass = 'status-' . preg_replace('/[^a-z]/', '', $status);
             $summary = trim((string) ($order['ItemSummary'] ?? ''));
+            $shippingMeta = parseShippingSnapshot((string) ($order['ShippingAddress'] ?? ''));
             if ($summary === '') {
                 $summary = 'No item details.';
             }
@@ -167,7 +234,19 @@ $orders = $orderStmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
                 <hr>
                 <div class="small mb-2"><strong>Items:</strong> <?php echo htmlspecialchars($summary); ?></div>
-                <div class="small text-muted"><strong>Shipping:</strong> <?php echo htmlspecialchars((string) ($order['ShippingAddress'] ?: '-')); ?></div>
+                <div class="small text-muted"><strong>Shipping Address:</strong> <?php echo nl2br(htmlspecialchars((string) $shippingMeta['address'])); ?></div>
+                <?php if ($shippingMeta['payment'] !== ''): ?>
+                    <div class="small text-muted"><strong>Payment:</strong> <i class="bi <?php echo htmlspecialchars(getPaymentIconClass((string) $shippingMeta['payment'])); ?> me-1" aria-hidden="true"></i><?php echo htmlspecialchars((string) $shippingMeta['payment']); ?></div>
+                <?php endif; ?>
+                <?php if ($shippingMeta['method'] !== ''): ?>
+                    <div class="small text-muted"><strong>Method:</strong> <?php echo htmlspecialchars((string) $shippingMeta['method']); ?></div>
+                <?php endif; ?>
+                <?php if ($shippingMeta['estimate'] !== ''): ?>
+                    <div class="small text-muted"><strong>Delivery ETA:</strong> <?php echo htmlspecialchars((string) $shippingMeta['estimate']); ?></div>
+                <?php endif; ?>
+                <?php if ($shippingMeta['notes'] !== ''): ?>
+                    <div class="small text-muted"><strong>Order Notes:</strong> <?php echo htmlspecialchars((string) $shippingMeta['notes']); ?></div>
+                <?php endif; ?>
                 <div class="mt-2">
                     <a class="btn btn-outline-primary btn-sm" href="order_detail.php?id=<?php echo urlencode((string) $order['OrderId']); ?>">View Details</a>
                 </div>

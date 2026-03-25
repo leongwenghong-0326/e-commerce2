@@ -10,14 +10,99 @@ $statusMessage = '';
 $statusType = '';
 
 $allowedStatuses = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
+$shippingMethodOptions = [
+	'standard' => 'Standard Delivery',
+	'express' => 'Express Delivery',
+	'scheduled' => 'Scheduled Delivery',
+];
+$paymentMethodOptions = [
+	'cod' => 'Cash on Delivery',
+	'fpx' => 'Online Banking (FPX)',
+	'card' => 'Credit / Debit Card',
+];
+
+function parseShippingSnapshot(string $shippingAddress): array
+{
+	$shippingAddress = trim($shippingAddress);
+	if ($shippingAddress === '') {
+		return [
+			'address' => '-',
+			'payment' => '',
+			'method' => '',
+			'estimate' => '',
+			'notes' => '',
+		];
+	}
+
+	$parts = preg_split('/\R\R+/', $shippingAddress, 2);
+	$address = trim((string) ($parts[0] ?? ''));
+	$metaBlock = trim((string) ($parts[1] ?? ''));
+
+	$payment = '';
+	$method = '';
+	$estimate = '';
+	$notes = '';
+
+	if ($metaBlock !== '') {
+		$lines = preg_split('/\R+/', $metaBlock);
+		foreach ($lines as $line) {
+			$line = trim((string) $line);
+			if (str_starts_with($line, 'Payment Method: ')) {
+				$payment = trim(substr($line, strlen('Payment Method: ')));
+			} elseif (str_starts_with($line, 'Shipping Method: ')) {
+				$method = trim(substr($line, strlen('Shipping Method: ')));
+			} elseif (str_starts_with($line, 'Estimated Delivery: ')) {
+				$estimate = trim(substr($line, strlen('Estimated Delivery: ')));
+			} elseif (str_starts_with($line, 'Order Notes: ')) {
+				$notes = trim(substr($line, strlen('Order Notes: ')));
+			}
+		}
+	}
+
+	return [
+		'address' => $address !== '' ? $address : '-',
+		'payment' => $payment,
+		'method' => $method,
+		'estimate' => $estimate,
+		'notes' => $notes,
+	];
+}
+
+function getPaymentIconClass(string $paymentLabel): string
+{
+	$normalized = strtolower(trim($paymentLabel));
+	if ($normalized === '') {
+		return 'bi-wallet2';
+	}
+	if (str_contains($normalized, 'fpx') || str_contains($normalized, 'online banking')) {
+		return 'bi-bank';
+	}
+	if (str_contains($normalized, 'card') || str_contains($normalized, 'credit') || str_contains($normalized, 'debit')) {
+		return 'bi-credit-card-2-front';
+	}
+	if (str_contains($normalized, 'cash')) {
+		return 'bi-cash-coin';
+	}
+	return 'bi-wallet2';
+}
 
 $search = trim($_GET['q'] ?? '');
 $statusFilter = trim($_GET['status'] ?? '');
+$shippingMethodFilter = trim($_GET['shipping_method'] ?? '');
+$paymentMethodFilter = trim($_GET['payment_method'] ?? '');
 $currentPage = max(1, (int) ($_GET['page'] ?? 1));
 $itemsPerPage = 25;
 if ($statusFilter !== '' && !in_array($statusFilter, $allowedStatuses, true)) {
 	$statusFilter = '';
 }
+if ($shippingMethodFilter !== '' && !array_key_exists($shippingMethodFilter, $shippingMethodOptions)) {
+	$shippingMethodFilter = '';
+}
+$activeShippingMethodLabel = $shippingMethodFilter !== '' ? $shippingMethodOptions[$shippingMethodFilter] : '';
+if ($paymentMethodFilter !== '' && !array_key_exists($paymentMethodFilter, $paymentMethodOptions)) {
+	$paymentMethodFilter = '';
+}
+$activePaymentMethodLabel = $paymentMethodFilter !== '' ? $paymentMethodOptions[$paymentMethodFilter] : '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	$action = $_POST['action'] ?? '';
@@ -32,9 +117,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 		$returnSearch = trim($_POST['return_q'] ?? '');
 		$returnStatus = trim($_POST['return_status'] ?? '');
+		$returnShippingMethod = trim($_POST['return_shipping_method'] ?? '');
+		$returnPaymentMethod = trim($_POST['return_payment_method'] ?? '');
 		$returnPage = max(1, (int) ($_POST['return_page'] ?? 1));
 		if ($returnStatus !== '' && !in_array($returnStatus, $allowedStatuses, true)) {
 			$returnStatus = '';
+		}
+		if ($returnShippingMethod !== '' && !array_key_exists($returnShippingMethod, $shippingMethodOptions)) {
+			$returnShippingMethod = '';
+		}
+		if ($returnPaymentMethod !== '' && !array_key_exists($returnPaymentMethod, $paymentMethodOptions)) {
+			$returnPaymentMethod = '';
 		}
 
 		try {
@@ -66,6 +159,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			}
 			if ($returnStatus !== '') {
 				$query['status'] = $returnStatus;
+			}
+			if ($returnShippingMethod !== '') {
+				$query['shipping_method'] = $returnShippingMethod;
+			}
+			if ($returnPaymentMethod !== '') {
+				$query['payment_method'] = $returnPaymentMethod;
 			}
 			if ($returnPage > 1) {
 				$query['page'] = $returnPage;
@@ -170,6 +269,18 @@ try {
 		$params[':status_filter'] = $statusFilter;
 	}
 
+	if ($shippingMethodFilter !== '') {
+		$listSql .= " AND o.ShippingAddress LIKE :shipping_method_filter";
+		$listCountSql .= " AND o.ShippingAddress LIKE :shipping_method_filter";
+		$params[':shipping_method_filter'] = '%Shipping Method: ' . $shippingMethodOptions[$shippingMethodFilter] . '%';
+	}
+
+	if ($paymentMethodFilter !== '') {
+		$listSql .= " AND o.ShippingAddress LIKE :payment_method_filter";
+		$listCountSql .= " AND o.ShippingAddress LIKE :payment_method_filter";
+		$params[':payment_method_filter'] = '%Payment Method: ' . $paymentMethodOptions[$paymentMethodFilter] . '%';
+	}
+
 	$listCountStmt = $pdo->prepare($listCountSql);
 	$listCountStmt->execute($params);
 	$filteredTotal = (int) $listCountStmt->fetchColumn();
@@ -182,10 +293,12 @@ try {
 	$listStmt->execute($params);
 	$orders = $listStmt->fetchAll(PDO::FETCH_ASSOC);
 
-	$buildListUrl = function (array $overrides = []) use ($search, $statusFilter): string {
+	$buildListUrl = function (array $overrides = []) use ($search, $statusFilter, $shippingMethodFilter, $paymentMethodFilter): string {
 		$query = [
 			'q' => $search,
 			'status' => $statusFilter,
+			'shipping_method' => $shippingMethodFilter,
+			'payment_method' => $paymentMethodFilter,
 		];
 		$query = array_merge($query, $overrides);
 
@@ -194,6 +307,12 @@ try {
 		}
 		if (($query['status'] ?? '') === '') {
 			unset($query['status']);
+		}
+		if (($query['shipping_method'] ?? '') === '') {
+			unset($query['shipping_method']);
+		}
+		if (($query['payment_method'] ?? '') === '') {
+			unset($query['payment_method']);
 		}
 		if (($query['page'] ?? null) === 1) {
 			unset($query['page']);
@@ -594,6 +713,20 @@ try {
 			font-size: 13px;
 		}
 
+		.filter-chip {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			padding: 6px 10px;
+			border-radius: 999px;
+			font-size: 12px;
+			font-weight: 700;
+			line-height: 1;
+			color: #fff;
+			background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+			box-shadow: 0 6px 14px rgba(183, 64, 9, 0.24);
+		}
+
 		.items-text {
 			max-width: 380px;
 			line-height: 1.45;
@@ -603,6 +736,13 @@ try {
 			max-width: 340px;
 			white-space: pre-wrap;
 			line-height: 1.4;
+		}
+
+		.shipping-meta-row {
+			margin-top: 4px;
+			font-size: 12px;
+			line-height: 1.4;
+			color: rgba(31, 26, 21, 0.72);
 		}
 
 		.empty-state {
@@ -695,6 +835,7 @@ try {
 		<nav class="nav-links">
 			<a href="admin_dashboard.php"><i class="bi bi-speedometer2"></i> Control Panel</a>
 			<a href="product_management.php"><i class="bi bi-box"></i> Product Management</a>
+			<a href="category_management.php"><i class="bi bi-tags"></i> Category Management</a>
 			<a href="member_management.php"><i class="bi bi-people"></i> Member Management</a>
 			<a href="order_management.php" class="active"><i class="bi bi-cart"></i> Order Management</a>
 			<a href="admin_logout.php"><i class="bi bi-gear"></i> Logout</a>
@@ -752,12 +893,36 @@ try {
 							</option>
 						<?php endforeach; ?>
 					</select>
+					<select name="shipping_method">
+						<option value="">All Shipping Methods</option>
+						<?php foreach ($shippingMethodOptions as $methodKey => $methodLabel): ?>
+							<option value="<?php echo htmlspecialchars($methodKey); ?>" <?php echo $shippingMethodFilter === $methodKey ? 'selected' : ''; ?>>
+								<?php echo htmlspecialchars($methodLabel); ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+					<select name="payment_method">
+						<option value="">All Payment Methods</option>
+						<?php foreach ($paymentMethodOptions as $methodKey => $methodLabel): ?>
+							<option value="<?php echo htmlspecialchars($methodKey); ?>" <?php echo $paymentMethodFilter === $methodKey ? 'selected' : ''; ?>>
+								<?php echo htmlspecialchars($methodLabel); ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
 					<button class="btn btn-primary" type="submit"><i class="bi bi-search"></i> Filter</button>
-					<?php if ($search !== '' || $statusFilter !== ''): ?>
+					<?php if ($search !== '' || $statusFilter !== '' || $shippingMethodFilter !== '' || $paymentMethodFilter !== ''): ?>
 						<a class="btn btn-outline" href="order_management.php"><i class="bi bi-x-circle"></i> Clear</a>
 					<?php endif; ?>
 				</form>
-				<span class="muted"><?php echo $filteredTotal; ?> result(s)</span>
+				<div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+					<span class="muted"><?php echo $filteredTotal; ?> result(s)</span>
+					<?php if ($activeShippingMethodLabel !== ''): ?>
+						<span class="filter-chip"><i class="bi bi-truck"></i> <?php echo htmlspecialchars($activeShippingMethodLabel); ?></span>
+					<?php endif; ?>
+					<?php if ($activePaymentMethodLabel !== ''): ?>
+						<span class="filter-chip"><i class="bi bi-credit-card"></i> <?php echo htmlspecialchars($activePaymentMethodLabel); ?></span>
+					<?php endif; ?>
+				</div>
 			</div>
 
 			<?php if (empty($orders)): ?>
@@ -795,9 +960,7 @@ try {
 							}
 
 							$shippingAddress = trim((string) ($order['ShippingAddress'] ?? ''));
-							if ($shippingAddress === '') {
-								$shippingAddress = '-';
-							}
+							$shippingMeta = parseShippingSnapshot($shippingAddress);
 							?>
 							<tr>
 								<td>
@@ -820,6 +983,8 @@ try {
 										<input type="hidden" name="order_id" value="<?php echo htmlspecialchars((string) $order['OrderId']); ?>">
 										<input type="hidden" name="return_q" value="<?php echo htmlspecialchars($search); ?>">
 										<input type="hidden" name="return_status" value="<?php echo htmlspecialchars($statusFilter); ?>">
+										<input type="hidden" name="return_shipping_method" value="<?php echo htmlspecialchars($shippingMethodFilter); ?>">
+										<input type="hidden" name="return_payment_method" value="<?php echo htmlspecialchars($paymentMethodFilter); ?>">
 										<input type="hidden" name="return_page" value="<?php echo (int) $currentPage; ?>">
 										<select name="order_status" aria-label="Update order status for <?php echo htmlspecialchars((string) $order['OrderId']); ?>">
 											<?php foreach ($allowedStatuses as $statusOption): ?>
@@ -831,7 +996,21 @@ try {
 										<button class="btn btn-primary btn-save" type="submit">Save</button>
 									</form>
 								</td>
-								<td><div class="address-text"><?php echo htmlspecialchars($shippingAddress); ?></div></td>
+								<td>
+									<div class="address-text"><?php echo nl2br(htmlspecialchars((string) $shippingMeta['address'])); ?></div>
+									<?php if ($shippingMeta['method'] !== ''): ?>
+										<div class="shipping-meta-row"><strong>Method:</strong> <?php echo htmlspecialchars((string) $shippingMeta['method']); ?></div>
+									<?php endif; ?>
+									<?php if ($shippingMeta['payment'] !== ''): ?>
+										<div class="shipping-meta-row"><strong>Payment:</strong> <i class="bi <?php echo htmlspecialchars(getPaymentIconClass((string) $shippingMeta['payment'])); ?> me-1" aria-hidden="true"></i><?php echo htmlspecialchars((string) $shippingMeta['payment']); ?></div>
+									<?php endif; ?>
+									<?php if ($shippingMeta['estimate'] !== ''): ?>
+										<div class="shipping-meta-row"><strong>Delivery ETA:</strong> <?php echo htmlspecialchars((string) $shippingMeta['estimate']); ?></div>
+									<?php endif; ?>
+									<?php if ($shippingMeta['notes'] !== ''): ?>
+										<div class="shipping-meta-row"><strong>Notes:</strong> <?php echo nl2br(htmlspecialchars((string) $shippingMeta['notes'])); ?></div>
+									<?php endif; ?>
+								</td>
 								<td><?php echo htmlspecialchars((string) ($order['OrderDate'] ?? '-')); ?></td>
 							</tr>
 						<?php endforeach; ?>

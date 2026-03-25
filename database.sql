@@ -50,12 +50,27 @@ CREATE TABLE Addresses (
 CREATE TABLE Products (
     ProductId CHAR(36) PRIMARY KEY,
     ProductName VARCHAR(255) NOT NULL,
-    Category VARCHAR(100) NULL,
     Description TEXT,
     Price DECIMAL(10, 2) NOT NULL,
     StockQuantity INT DEFAULT 0,
     CreateDate DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 5.1 产品分类表
+CREATE TABLE `category` (
+    CategoryId CHAR(36) NOT NULL,
+    CategoryName VARCHAR(100),
+    CreateDate DATETIME,
+    PRIMARY KEY (CategoryId)
+);
+
+ALTER TABLE Products
+ADD COLUMN CategoryId CHAR(36),
+ADD CONSTRAINT fk_category
+FOREIGN KEY (CategoryId) REFERENCES category(CategoryId) ON DELETE SET NULL;
+
+ALTER TABLE `category`
+ADD COLUMN `CategoryIcon` VARCHAR(60);
 
 -- 6. 产品多图片表 (一品多图)
 CREATE TABLE ProductImages (

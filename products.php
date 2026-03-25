@@ -22,25 +22,37 @@ function hasProductColumn(PDO $pdo, string $columnName): bool
     return $cache[$columnName];
 }
 
+function hasTable(PDO $pdo, string $tableName): bool
+{
+    static $cache = [];
+    if (array_key_exists($tableName, $cache)) {
+        return $cache[$tableName];
+    }
+
+    $stmt = $pdo->prepare(
+        "SELECT 1
+         FROM INFORMATION_SCHEMA.TABLES
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = ?
+         LIMIT 1"
+    );
+    $stmt->execute([$tableName]);
+    $cache[$tableName] = (bool) $stmt->fetchColumn();
+
+    return $cache[$tableName];
+}
+
 $search = trim((string) ($_GET['q'] ?? ''));
 $currentPage = max(1, (int) ($_GET['page'] ?? 1));
 $itemsPerPage = 12;
 $hasCategoryColumn = hasProductColumn($pdo, 'Category');
-
-$defaultCategoryOptions = [
-    'General',
-    'Beverages',
-    'Snacks',
-    'Electronic',
-    'Fashion',
-    'Beauty',
-    'Home & Garden',
-    'Sports',
-    'Books',
-];
+$hasCategoryIdColumn = hasProductColumn($pdo, 'CategoryId');
+$hasCategoryTable = hasTable($pdo, 'category');
+$supportsCategoryFeature = ($hasCategoryIdColumn && $hasCategoryTable) || $hasCategoryColumn;
+$useCategoryJoin = $hasCategoryIdColumn && $hasCategoryTable;
 
 $categoryFilter = trim((string) ($_GET['category_filter'] ?? 'all'));
-if (!$hasCategoryColumn) {
+if (!$supportsCategoryFeature) {
     $categoryFilter = 'all';
 }
 if ($categoryFilter === 'uncategorized') {
@@ -70,7 +82,7 @@ $allowedSortColumns = [
     'name' => 'p.ProductName',
     'price' => 'p.Price',
 ];
-if ($hasCategoryColumn) {
+if ($supportsCategoryFeature) {
     $allowedSortColumns['category'] = 'CategoryName';
 }
 if (!isset($allowedSortColumns[$sortBy])) {
@@ -78,28 +90,40 @@ if (!isset($allowedSortColumns[$sortBy])) {
 }
 
 $availableCategories = [];
-if ($hasCategoryColumn) {
+if ($supportsCategoryFeature) {
     $categoryMap = [];
-    foreach ($defaultCategoryOptions as $defaultCategoryOption) {
-        $categoryMap[strtolower($defaultCategoryOption)] = $defaultCategoryOption;
+
+    if ($useCategoryJoin) {
+        $tableCategoryStmt = $pdo->query("SELECT CategoryName FROM category ORDER BY CategoryName ASC");
+        $tableCategories = $tableCategoryStmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        foreach ($tableCategories as $tableCategory) {
+            $tableCategory = trim((string) $tableCategory);
+            if ($tableCategory === '') {
+                continue;
+            }
+
+            $categoryMap[strtolower($tableCategory)] = $tableCategory;
+        }
     }
 
-    $catStmt = $pdo->query("SELECT DISTINCT TRIM(Category) AS CategoryName FROM Products WHERE Category IS NOT NULL AND TRIM(Category) <> '' ORDER BY TRIM(Category) ASC");
-    $rawCategories = $catStmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
-    foreach ($rawCategories as $rawCategory) {
-        $category = trim((string) $rawCategory);
-        if ($category === '') {
-            continue;
-        }
+    if ($hasCategoryColumn) {
+        $catStmt = $pdo->query("SELECT DISTINCT TRIM(Category) AS CategoryName FROM Products WHERE Category IS NOT NULL AND TRIM(Category) <> '' ORDER BY TRIM(Category) ASC");
+        $rawCategories = $catStmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        foreach ($rawCategories as $rawCategory) {
+            $category = trim((string) $rawCategory);
+            if ($category === '') {
+                continue;
+            }
 
-        $key = strtolower($category);
-        if ($key === 'electronic' || $key === 'electronics') {
-            $category = 'Electronic';
-            $key = 'electronic';
-        }
+            $key = strtolower($category);
+            if ($key === 'electronic' || $key === 'electronics') {
+                $category = 'Electronic';
+                $key = 'electronic';
+            }
 
-        if (!isset($categoryMap[$key])) {
-            $categoryMap[$key] = $category;
+            if (!isset($categoryMap[$key])) {
+                $categoryMap[$key] = $category;
+            }
         }
     }
     $availableCategories = array_values($categoryMap);
@@ -118,13 +142,16 @@ $listSql = "SELECT
             p.Price,
             p.StockQuantity,
             p.CreateDate,
-            " . ($hasCategoryColumn
-                ? "CASE
-                        WHEN p.Category IS NULL OR TRIM(p.Category) = '' THEN 'Uncategorized'
-                        WHEN LOWER(TRIM(p.Category)) IN ('electronic', 'electronics') THEN 'Electronic'
-                        ELSE TRIM(p.Category)
-                   END"
+                " . ($supportsCategoryFeature
+                ? ($useCategoryJoin
+                    ? "COALESCE(NULLIF(TRIM(c.CategoryName), ''), 'Uncategorized')"
+                    : "CASE
+                            WHEN p.Category IS NULL OR TRIM(p.Category) = '' THEN 'Uncategorized'
+                            WHEN LOWER(TRIM(p.Category)) IN ('electronic', 'electronics') THEN 'Electronic'
+                            ELSE TRIM(p.Category)
+                       END")
                 : "'Uncategorized'") . " AS CategoryName,
+            " . ($useCategoryJoin ? "c.CategoryIcon" : "NULL") . " AS CategoryIcon,
             (
                 SELECT ImageUrl
                 FROM ProductImages pi
@@ -133,9 +160,12 @@ $listSql = "SELECT
                 LIMIT 1
             ) AS PrimaryImage
             FROM Products p
+            " . ($useCategoryJoin ? "LEFT JOIN category c ON c.CategoryId = p.CategoryId" : "") . "
             WHERE 1=1";
 
-$countSql = "SELECT COUNT(*) FROM Products p WHERE 1=1";
+$countSql = "SELECT COUNT(*) FROM Products p
+            " . ($useCategoryJoin ? "LEFT JOIN category c ON c.CategoryId = p.CategoryId" : "") . "
+            WHERE 1=1";
 $params = [];
 
 if ($search !== '') {
@@ -163,14 +193,20 @@ if ($maxPrice !== null) {
     $params[':max_price'] = number_format($maxPrice, 2, '.', '');
 }
 
-if ($hasCategoryColumn && $categoryFilter !== 'all') {
-    if ($categoryFilter === 'Electronic') {
-        $listSql .= " AND LOWER(TRIM(p.Category)) IN ('electronic', 'electronics')";
-        $countSql .= " AND LOWER(TRIM(p.Category)) IN ('electronic', 'electronics')";
-    } else {
-        $listSql .= ' AND p.Category = :category_filter';
-        $countSql .= ' AND p.Category = :category_filter';
+if ($supportsCategoryFeature && $categoryFilter !== 'all') {
+    if ($useCategoryJoin) {
+        $listSql .= " AND COALESCE(NULLIF(TRIM(c.CategoryName), ''), 'Uncategorized') = :category_filter";
+        $countSql .= " AND COALESCE(NULLIF(TRIM(c.CategoryName), ''), 'Uncategorized') = :category_filter";
         $params[':category_filter'] = $categoryFilter;
+    } else {
+        if ($categoryFilter === 'Electronic') {
+            $listSql .= " AND LOWER(TRIM(p.Category)) IN ('electronic', 'electronics')";
+            $countSql .= " AND LOWER(TRIM(p.Category)) IN ('electronic', 'electronics')";
+        } else {
+            $listSql .= ' AND p.Category = :category_filter';
+            $countSql .= ' AND p.Category = :category_filter';
+            $params[':category_filter'] = $categoryFilter;
+        }
     }
 }
 
@@ -421,7 +457,7 @@ $buildUrl = function (array $overrides = []) use ($search, $sortBy, $sortDir, $m
             <div class="col-12 col-lg-3">
                 <input type="text" class="form-control" name="q" value="<?php echo htmlspecialchars($search); ?>" placeholder="Search by product name or description">
             </div>
-            <?php if ($hasCategoryColumn): ?>
+            <?php if ($supportsCategoryFeature): ?>
                 <div class="col-6 col-lg-2">
                     <select class="form-select" name="category_filter">
                         <option value="all" <?php echo $categoryFilter === 'all' ? 'selected' : ''; ?>>All Categories</option>
@@ -441,7 +477,7 @@ $buildUrl = function (array $overrides = []) use ($search, $sortBy, $sortDir, $m
                 <select class="form-select" name="sort_by">
                     <option value="newest" <?php echo $sortBy === 'newest' ? 'selected' : ''; ?>>Newest</option>
                     <option value="name" <?php echo $sortBy === 'name' ? 'selected' : ''; ?>>Name</option>
-                    <?php if ($hasCategoryColumn): ?>
+                    <?php if ($supportsCategoryFeature): ?>
                         <option value="category" <?php echo $sortBy === 'category' ? 'selected' : ''; ?>>Category</option>
                     <?php endif; ?>
                     <option value="price" <?php echo $sortBy === 'price' ? 'selected' : ''; ?>>Price</option>
@@ -496,7 +532,12 @@ $buildUrl = function (array $overrides = []) use ($search, $sortBy, $sortDir, $m
                         </a>
                         <div class="product-body">
                             <div class="name"><?php echo htmlspecialchars((string) $product['ProductName']); ?></div>
-                            <div class="stock-note mb-1">Category: <?php echo htmlspecialchars((string) ($product['CategoryName'] ?? 'Uncategorized')); ?></div>
+                            <div class="stock-note mb-1 d-flex align-items-center gap-2">
+                                <?php if (!empty($product['CategoryIcon'])): ?>
+                                    <img src="<?php echo htmlspecialchars((string) $product['CategoryIcon']); ?>" alt="Category icon" style="width:18px;height:18px;object-fit:cover;border-radius:4px;border:1px solid rgba(27,37,48,0.15);">
+                                <?php endif; ?>
+                                <span>Category: <?php echo htmlspecialchars((string) ($product['CategoryName'] ?? 'Uncategorized')); ?></span>
+                            </div>
                             <div class="desc"><?php echo htmlspecialchars($desc); ?></div>
                             <div class="price">RM <?php echo number_format((float) $product['Price'], 2); ?></div>
                             <div class="d-flex justify-content-between align-items-center mb-3">

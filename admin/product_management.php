@@ -48,50 +48,36 @@ $projectRoot = dirname(__DIR__);
 $productUploadDirRel = 'uploads/products';
 $productUploadDirAbs = $projectRoot . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'products';
 $maxFileUploads = max(1, (int) ini_get('max_file_uploads'));
-$hasProductCategoryColumn = hasProductColumn($pdo, 'Category');
-
-$defaultCategoryOptions = [
-	'General',
-	'Beverages',
-	'Snacks',
-	'Electronic',
-	'Fashion',
-	'Beauty',
-	'Home & Garden',
-	'Sports',
-	'Books',
-];
+$hasProductCategoryIdColumn = hasProductColumn($pdo, 'CategoryId');
+$hasCategoryTable = hasTable($pdo, 'category');
+$supportsCategoryFeature = $hasProductCategoryIdColumn && $hasCategoryTable;
 $categoryOptions = [];
-if ($hasProductCategoryColumn) {
+$categoryIdByName = [];
+if ($supportsCategoryFeature) {
 	$categoryOptionMap = [];
-	foreach ($defaultCategoryOptions as $defaultCategoryOption) {
-		$categoryOptionMap[strtolower($defaultCategoryOption)] = $defaultCategoryOption;
-	}
-	$existingCategoryStmt = $pdo->query("SELECT DISTINCT TRIM(Category) AS CategoryName FROM Products WHERE Category IS NOT NULL AND TRIM(Category) <> '' ORDER BY TRIM(Category) ASC");
-	$existingCategoryRows = $existingCategoryStmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
-	foreach ($existingCategoryRows as $existingCategory) {
-		$existingCategory = trim((string) $existingCategory);
-		if ($existingCategory === '') {
-			continue;
-		}
+	if ($hasCategoryTable) {
+		$categoryRowsStmt = $pdo->query("SELECT CategoryId, CategoryName FROM category ORDER BY CategoryName ASC");
+		$categoryRows = $categoryRowsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+		foreach ($categoryRows as $categoryRow) {
+			$categoryName = trim((string) ($categoryRow['CategoryName'] ?? ''));
+			$categoryId = trim((string) ($categoryRow['CategoryId'] ?? ''));
+			if ($categoryName === '' || $categoryId === '') {
+				continue;
+			}
 
-		$normalizedKey = strtolower($existingCategory);
-		if ($normalizedKey === 'electronics' || $normalizedKey === 'electronic') {
-			$existingCategory = 'Electronic';
-			$normalizedKey = 'electronic';
-		}
-
-		if (!isset($categoryOptionMap[$normalizedKey])) {
-			$categoryOptionMap[$normalizedKey] = $existingCategory;
+			$normalizedName = strtolower($categoryName);
+			$categoryOptionMap[$normalizedName] = $categoryName;
+			$categoryIdByName[$categoryName] = $categoryId;
 		}
 	}
+
 	$categoryOptions = array_values($categoryOptionMap);
 	natcasesort($categoryOptions);
 	$categoryOptions = array_values($categoryOptions);
 }
 
 $categoryFilter = trim((string) ($_GET['category_filter'] ?? 'all'));
-if (!$hasProductCategoryColumn) {
+if (!$supportsCategoryFeature) {
 	$categoryFilter = 'all';
 }
 if ($categoryFilter === 'uncategorized') {
@@ -118,6 +104,27 @@ function hasProductColumn(PDO $pdo, string $columnName): bool
 	$columnCache[$columnName] = (bool) $stmt->fetchColumn();
 
 	return $columnCache[$columnName];
+}
+
+function hasTable(PDO $pdo, string $tableName): bool
+{
+	static $tableCache = [];
+
+	if (array_key_exists($tableName, $tableCache)) {
+		return $tableCache[$tableName];
+	}
+
+	$stmt = $pdo->prepare(
+		"SELECT 1
+		 FROM INFORMATION_SCHEMA.TABLES
+		 WHERE TABLE_SCHEMA = DATABASE()
+		   AND TABLE_NAME = ?
+		 LIMIT 1"
+	);
+	$stmt->execute([$tableName]);
+	$tableCache[$tableName] = (bool) $stmt->fetchColumn();
+
+	return $tableCache[$tableName];
 }
 
 function uploadProductImage(array $file, string $uploadDirAbs, string $uploadDirRel): string
@@ -315,7 +322,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			if ($action === 'add_product') {
 				$name = trim($_POST['product_name'] ?? '');
 				$description = trim($_POST['description'] ?? '');
-				$category = $hasProductCategoryColumn ? trim((string) ($_POST['category'] ?? '')) : '';
+				$category = $supportsCategoryFeature ? trim((string) ($_POST['category'] ?? '')) : '';
+				$categoryId = null;
 				$priceRaw = trim($_POST['price'] ?? '');
 				$stockRaw = trim($_POST['stock_quantity'] ?? '');
 
@@ -328,11 +336,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 				if ($stockRaw === '' || !preg_match('/^\d+$/', $stockRaw)) {
 					throw new RuntimeException('Stock quantity must be a valid non-negative integer.');
 				}
-				if ($hasProductCategoryColumn && $category === '') {
+				if ($supportsCategoryFeature && $category === '') {
 					throw new RuntimeException('Category is required.');
 				}
-				if ($hasProductCategoryColumn && !in_array($category, $categoryOptions, true)) {
+				if ($supportsCategoryFeature && !in_array($category, $categoryOptions, true)) {
 					throw new RuntimeException('Please select a valid category.');
+				}
+				if ($hasProductCategoryIdColumn && $hasCategoryTable) {
+					$categoryId = $categoryIdByName[$category] ?? null;
+					if ($categoryId === null) {
+						throw new RuntimeException('Selected category does not exist in category table.');
+					}
 				}
 
 				$selectedImageCount = countSelectedUploadFiles($_FILES['product_images'] ?? []);
@@ -343,9 +357,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 				$imagePaths = uploadProductImages($_FILES['product_images'] ?? [], $productUploadDirAbs, $productUploadDirRel);
 				$productId = (string) $pdo->query('SELECT UUID()')->fetchColumn();
 
-				if ($hasProductCategoryColumn) {
-					$insertSql = 'INSERT INTO Products (ProductId, ProductName, Category, Description, Price, StockQuantity, CreateDate)
-									  VALUES (:product_id, :name, :category, :description, :price, :stock, NOW())';
+				if ($hasProductCategoryIdColumn) {
+					$insertSql = 'INSERT INTO Products (ProductId, ProductName, CategoryId, Description, Price, StockQuantity, CreateDate)
+									  VALUES (:product_id, :name, :category_id, :description, :price, :stock, NOW())';
 				} else {
 					$insertSql = 'INSERT INTO Products (ProductId, ProductName, Description, Price, StockQuantity, CreateDate)
 									  VALUES (:product_id, :name, :description, :price, :stock, NOW())';
@@ -358,8 +372,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 					':price' => number_format((float) $priceRaw, 2, '.', ''),
 					':stock' => (int) $stockRaw,
 				];
-				if ($hasProductCategoryColumn) {
-					$insertParams[':category'] = $category;
+				if ($hasProductCategoryIdColumn) {
+					$insertParams[':category_id'] = $categoryId;
 				}
 				$insertStmt->execute($insertParams);
 
@@ -387,7 +401,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 				$productId = trim($_POST['product_id'] ?? '');
 				$name = trim($_POST['product_name'] ?? '');
 				$description = trim($_POST['description'] ?? '');
-				$category = $hasProductCategoryColumn ? trim((string) ($_POST['category'] ?? '')) : '';
+				$category = $supportsCategoryFeature ? trim((string) ($_POST['category'] ?? '')) : '';
+				$categoryId = null;
 				$priceRaw = trim($_POST['price'] ?? '');
 				$stockRaw = trim($_POST['stock_quantity'] ?? '');
 
@@ -403,11 +418,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 				if ($stockRaw === '' || !preg_match('/^\d+$/', $stockRaw)) {
 					throw new RuntimeException('Stock quantity must be a valid non-negative integer.');
 				}
-				if ($hasProductCategoryColumn && $category === '') {
+				if ($supportsCategoryFeature && $category === '') {
 					throw new RuntimeException('Category is required.');
 				}
-				if ($hasProductCategoryColumn && !in_array($category, $categoryOptions, true)) {
+				if ($supportsCategoryFeature && !in_array($category, $categoryOptions, true)) {
 					throw new RuntimeException('Please select a valid category.');
+				}
+				if ($hasProductCategoryIdColumn && $hasCategoryTable) {
+					$categoryId = $categoryIdByName[$category] ?? null;
+					if ($categoryId === null) {
+						throw new RuntimeException('Selected category does not exist in category table.');
+					}
 				}
 
 				$selectedImageCount = countSelectedUploadFiles($_FILES['product_images'] ?? []);
@@ -417,10 +438,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 				$newImagePaths = uploadProductImages($_FILES['product_images'] ?? [], $productUploadDirAbs, $productUploadDirRel);
 
-				if ($hasProductCategoryColumn) {
+				if ($hasProductCategoryIdColumn) {
 					$updateSql = 'UPDATE Products
 								  SET ProductName = :name,
-									  Category = :category,
+									  CategoryId = :category_id,
 									  Description = :description,
 									  Price = :price,
 									  StockQuantity = :stock
@@ -441,8 +462,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 					':stock' => (int) $stockRaw,
 					':product_id' => $productId,
 				];
-				if ($hasProductCategoryColumn) {
-					$updateParams[':category'] = $category;
+				if ($hasProductCategoryIdColumn) {
+					$updateParams[':category_id'] = $categoryId;
 				}
 				$updateStmt->execute($updateParams);
 
@@ -560,7 +581,9 @@ if ($editId !== '') {
 	$editStmt = $pdo->prepare('SELECT
 								ProductId,
 								ProductName,
-								' . ($hasProductCategoryColumn ? 'Category,' : "'' AS Category,") . '
+								' . ($supportsCategoryFeature
+									? "COALESCE(NULLIF(TRIM(c.CategoryName), ''), 'Uncategorized') AS Category,"
+									: "'' AS Category,") . '
 								Description,
 								Price,
 								StockQuantity,
@@ -573,6 +596,7 @@ if ($editId !== '') {
 									LIMIT 1
 								) AS PrimaryImageUrl
 							FROM Products
+							' . (($hasProductCategoryIdColumn && $hasCategoryTable) ? 'LEFT JOIN category c ON c.CategoryId = Products.CategoryId' : '') . '
 							WHERE ProductId = :id
 							LIMIT 1');
 	$editStmt->execute([':id' => $editId]);
@@ -615,8 +639,8 @@ try {
 			$statusFilter = 'all';
 		}
 	}
-	if ($hasProductCategoryColumn) {
-		$allowedSortColumns['category'] = 'p.Category';
+	if ($supportsCategoryFeature) {
+		$allowedSortColumns['category'] = 'CategoryName';
 	} else {
 		$categoryFilter = 'all';
 	}
@@ -638,7 +662,9 @@ try {
 	];
 
 	$listSql = 'SELECT p.ProductId, p.ProductName,
-					' . ($hasProductCategoryColumn ? "COALESCE(NULLIF(TRIM(p.Category), ''), 'Uncategorized') AS CategoryName," : "'Uncategorized' AS CategoryName,") . '
+					' . ($supportsCategoryFeature
+						? "COALESCE(NULLIF(TRIM(c.CategoryName), ''), 'Uncategorized') AS CategoryName,"
+						: "'Uncategorized' AS CategoryName,") . '
 					p.Description, p.Price, p.StockQuantity, p.CreateDate,
 					' . ($hasProductActiveColumn ? 'p.IsActive,' : '1 AS IsActive,') . '
 					(
@@ -650,9 +676,12 @@ try {
 						LIMIT 1
 					) AS PrimaryImageUrl
 				FROM Products p
+				' . (($hasProductCategoryIdColumn && $hasCategoryTable) ? 'LEFT JOIN category c ON c.CategoryId = p.CategoryId' : '') . '
 				WHERE 1=1';
 
-	$listCountSql = 'SELECT COUNT(*) FROM Products p WHERE 1=1';
+	$listCountSql = 'SELECT COUNT(*) FROM Products p
+					' . (($hasProductCategoryIdColumn && $hasCategoryTable) ? 'LEFT JOIN category c ON c.CategoryId = p.CategoryId' : '') . '
+					WHERE 1=1';
 
 	$params = [];
 	if ($search !== '') {
@@ -694,9 +723,9 @@ try {
 		$params[':max_price'] = number_format($maxPrice, 2, '.', '');
 	}
 
-	if ($hasProductCategoryColumn && $categoryFilter !== 'all') {
-		$listSql .= ' AND p.Category = :category_filter';
-		$listCountSql .= ' AND p.Category = :category_filter';
+	if ($supportsCategoryFeature && $categoryFilter !== 'all') {
+		$listSql .= " AND COALESCE(NULLIF(TRIM(c.CategoryName), ''), 'Uncategorized') = :category_filter";
+		$listCountSql .= " AND COALESCE(NULLIF(TRIM(c.CategoryName), ''), 'Uncategorized') = :category_filter";
 		$params[':category_filter'] = $categoryFilter;
 	}
 
@@ -1609,6 +1638,7 @@ try {
 		<nav class="nav-links">
 			<a href="admin_dashboard.php"><i class="bi bi-speedometer2"></i> Control Panel</a>
 			<a href="product_management.php" class="active"><i class="bi bi-box"></i> Product Management</a>
+			<a href="category_management.php"><i class="bi bi-tags"></i> Category Management</a>
 			<a href="member_management.php"><i class="bi bi-people"></i> Member Management</a>
 			<a href="order_management.php"><i class="bi bi-cart"></i> Order Management</a>
 			<a href="admin_logout.php"><i class="bi bi-gear"></i> Logout</a>
@@ -1695,7 +1725,7 @@ try {
 					>
 				</div>
 
-				<?php if ($hasProductCategoryColumn): ?>
+				<?php if ($supportsCategoryFeature): ?>
 				<div class="field">
 					<label for="category">Category</label>
 					<select id="category" name="category" required>
@@ -1771,7 +1801,7 @@ try {
 						<option value="low_stock" <?php echo $stockFilter === 'low_stock' ? 'selected' : ''; ?>>Low Stock (1-5)</option>
 						<option value="out_of_stock" <?php echo $stockFilter === 'out_of_stock' ? 'selected' : ''; ?>>Out of Stock</option>
 					</select>
-					<?php if ($hasProductCategoryColumn): ?>
+					<?php if ($supportsCategoryFeature): ?>
 						<select name="category_filter">
 							<option value="all" <?php echo $categoryFilter === 'all' ? 'selected' : ''; ?>>All Categories</option>
 							<?php foreach ($availableCategories as $availableCategory): ?>
@@ -1791,7 +1821,7 @@ try {
 					<select name="sort_by">
 						<option value="newest" <?php echo $sortBy === 'newest' ? 'selected' : ''; ?>>Newest</option>
 						<option value="name" <?php echo $sortBy === 'name' ? 'selected' : ''; ?>>Name</option>
-						<?php if ($hasProductCategoryColumn): ?>
+						<?php if ($supportsCategoryFeature): ?>
 							<option value="category" <?php echo $sortBy === 'category' ? 'selected' : ''; ?>>Category</option>
 						<?php endif; ?>
 						<option value="price" <?php echo $sortBy === 'price' ? 'selected' : ''; ?>>Price</option>
@@ -1823,7 +1853,7 @@ try {
 							<tr>
 								<th>Image</th>
 								<th class="sortable"><a href="<?php echo htmlspecialchars($buildListUrl(['sort_by' => 'name', 'sort_dir' => ($sortBy === 'name' && $sortDir === 'asc') ? 'desc' : 'asc', 'page' => 1])); ?>">Name<?php if ($sortBy === 'name') echo $sortDir === 'asc' ? ' ▲' : ' ▼'; ?></a></th>
-								<?php if ($hasProductCategoryColumn): ?>
+								<?php if ($supportsCategoryFeature): ?>
 									<th class="sortable"><a href="<?php echo htmlspecialchars($buildListUrl(['sort_by' => 'category', 'sort_dir' => ($sortBy === 'category' && $sortDir === 'asc') ? 'desc' : 'asc', 'page' => 1])); ?>">Category<?php if ($sortBy === 'category') echo $sortDir === 'asc' ? ' ▲' : ' ▼'; ?></a></th>
 								<?php else: ?>
 									<th>Category</th>

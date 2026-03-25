@@ -29,6 +29,23 @@ if(isset($_SESSION['user_id'])){
 }
 
 ?>
+<script>
+    (function () {
+        if (!document.head) {
+            return;
+        }
+
+        var existing = document.querySelector('link[href*="bootstrap-icons"]');
+        if (existing) {
+            return;
+        }
+
+        var iconCss = document.createElement('link');
+        iconCss.rel = 'stylesheet';
+        iconCss.href = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css';
+        document.head.appendChild(iconCss);
+    })();
+</script>
 <style>
     :root {
         --bg-start: #f4fbf8;
@@ -52,6 +69,22 @@ if(isset($_SESSION['user_id'])){
         font-weight: 700;
         letter-spacing: -0.01em;
         color: var(--ink);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .site-nav .brand-icon {
+        width: 26px;
+        height: 26px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        box-shadow: 0 6px 12px rgba(11, 111, 86, 0.28);
+        font-size: 0.9rem;
     }
 
     .site-nav .nav-link {
@@ -132,7 +165,10 @@ if(isset($_SESSION['user_id'])){
 </style>
 <nav class="navbar navbar-expand-lg navbar-light site-nav">
     <div class="container-fluid">
-        <a class="navbar-brand" href="index.php">E-commerce</a>
+        <a class="navbar-brand" href="index.php">
+            <span class="brand-icon"><i class="bi bi-bag"></i></span>
+            <span>E-commerce</span>
+        </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
