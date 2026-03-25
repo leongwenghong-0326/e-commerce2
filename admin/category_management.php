@@ -391,6 +391,8 @@ $buildUrl = function (array $overrides = []) use ($search, $editId, $page): stri
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+	<link rel="stylesheet" href="../asset/css/admin-base.css">
+	<link rel="stylesheet" href="../asset/css/admin-layout-responsive.css">
 	<style>
 		:root {
 			--bg: #f6f2e8;
@@ -654,22 +656,6 @@ $buildUrl = function (array $overrides = []) use ($search, $editId, $page): stri
 			border-bottom-color: rgba(31, 26, 21, 0.1);
 		}
 
-		@media (max-width: 991px) {
-			.shell {
-				min-width: 0;
-				grid-template-columns: 1fr;
-			}
-
-			.sidebar {
-				min-height: auto;
-				border-right: none;
-				border-bottom: 1px solid var(--line);
-			}
-
-			.main {
-				padding: 20px;
-			}
-		}
 	</style>
 </head>
 <body>

@@ -56,6 +56,8 @@ try {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../asset/css/admin-base.css">
+    <link rel="stylesheet" href="../asset/css/admin-layout-responsive.css">
     <style>
         :root {
             --bg: #f6f2e8;
@@ -266,12 +268,8 @@ try {
         }
 
         @media (max-width: 640px) {
-            body {
-                padding: 0;
-            }
-
-            .dashboard-shell {
-                min-width: 1000px;
+            .cards {
+                grid-template-columns: 1fr;
             }
         }
     </style>

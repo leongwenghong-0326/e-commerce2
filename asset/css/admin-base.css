@@ -1,0 +1,123 @@
+/* Shared base styles for admin management pages */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: 'IBM Plex Sans', sans-serif;
+    color: var(--ink);
+    background:
+        radial-gradient(circle at 15% 20%, rgba(218, 90, 27, 0.2), transparent 42%),
+        radial-gradient(circle at 85% 82%, rgba(184, 64, 9, 0.22), transparent 35%),
+        linear-gradient(145deg, #f7f0df 0%, #f4ede4 48%, #efe5d2 100%);
+    padding: 0;
+}
+
+.shell,
+.dashboard-shell {
+    width: 100%;
+    margin: 0;
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    border: none;
+    border-radius: 0;
+    overflow: hidden;
+    box-shadow: none;
+    background: var(--paper);
+    backdrop-filter: blur(8px);
+}
+
+.shell-scroll,
+.dashboard-scroll {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+    padding-bottom: 8px;
+}
+
+.sidebar {
+    padding: 30px 22px;
+    border-right: 1px solid var(--line);
+    min-height: 100vh;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.12)),
+        repeating-linear-gradient(135deg, transparent, transparent 12px, rgba(31, 26, 21, 0.03) 12px, rgba(31, 26, 21, 0.03) 24px);
+}
+
+.brand-tag {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.6);
+    margin-bottom: 14px;
+}
+
+.nav-links {
+    display: grid;
+    gap: 8px;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+    padding: 11px 12px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.nav-links a:hover {
+    background: rgba(255, 255, 255, 0.72);
+    border-color: var(--line);
+    transform: translateX(2px);
+}
+
+.nav-links a.active {
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(183, 64, 9, 0.28);
+}
+
+.main {
+    padding: 30px;
+}
+
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 18px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+}
+
+.topbar h1 {
+    margin: 0;
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(1.6rem, 2.5vw, 2.2rem);
+    letter-spacing: -0.02em;
+}
+
+.admin-badge,
+.badge-admin {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 8px 12px;
+    border-radius: 999px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+}

@@ -1,0 +1,51 @@
+/* Shared responsive behavior for admin layout pages */
+@media (max-width: 1199px) {
+    .shell,
+    .dashboard-shell {
+        min-width: 0;
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        min-height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+    }
+
+    .main {
+        padding: 20px;
+    }
+
+    .topbar {
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 960px) {
+    .cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .stats {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .main {
+        padding: 15px;
+    }
+}
+
+@media (max-width: 640px) {
+    .search-form,
+    .filter-form {
+        max-width: 100%;
+    }
+
+    .search-form input,
+    .search-form select,
+    .filter-form input,
+    .filter-form select {
+        min-width: 100%;
+    }
+}
