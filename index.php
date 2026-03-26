@@ -155,6 +155,94 @@ try {
             padding: 20px 0 10px;
         }
 
+        .intro-section {
+            padding: 10px 0 28px;
+        }
+
+        .intro-panel {
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            background: linear-gradient(160deg, rgba(255, 255, 255, 0.94), rgba(246, 253, 250, 0.9));
+            box-shadow: 0 16px 30px rgba(10, 36, 60, 0.08);
+            padding: 26px;
+            height: 100%;
+        }
+
+        .intro-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(1.45rem, 2.5vw, 2rem);
+            font-weight: 700;
+            letter-spacing: -0.015em;
+            line-height: 1.15;
+            margin-bottom: 12px;
+            color: #1f3845;
+        }
+
+        .intro-text {
+            font-size: 0.97rem;
+            color: #4e6578;
+            line-height: 1.7;
+            margin-bottom: 0;
+            max-width: 58ch;
+        }
+
+        .intro-points {
+            margin: 16px 0 0;
+            padding: 0;
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            max-width: 64ch;
+        }
+
+        .intro-points li {
+            border: 1px solid rgba(15, 143, 111, 0.2);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.74);
+            padding: 10px 12px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: #335061;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .intro-points i {
+            color: var(--accent-strong);
+            font-size: 0.95rem;
+        }
+
+        .intro-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .intro-metric {
+            border: 1px solid rgba(15, 143, 111, 0.2);
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.75);
+            padding: 14px;
+        }
+
+        .intro-metric-value {
+            display: block;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--accent-strong);
+            line-height: 1.1;
+        }
+
+        .intro-metric-label {
+            display: block;
+            margin-top: 5px;
+            font-size: 0.84rem;
+            color: #627384;
+        }
+
         .category-showcase-head {
             animation: fadeUp 520ms ease-out both;
         }
@@ -319,24 +407,162 @@ try {
             color: var(--accent-strong);
         }
 
-        footer {
-            background: #1b2530;
-            color: rgba(255,255,255,.72);
-            font-size: 14px;
-            border-top: 1px solid rgba(255,255,255,.08);
+        .site-footer {
+            position: relative;
+            margin-top: 2.2rem;
+            background:
+                radial-gradient(circle at 85% 15%, rgba(39, 124, 198, 0.2), transparent 34%),
+                linear-gradient(135deg, #102f2e 0%, #153b43 54%, #0b6f56 100%);
+            color: rgba(255, 255, 255, 0.86);
+            overflow: hidden;
         }
-        footer a {
-            color: rgba(255,255,255,.62);
+        .site-footer::before {
+            content: '';
+            position: absolute;
+            top: -138px;
+            left: -8%;
+            width: 112%;
+            height: 244px;
+            background: var(--bg-start);
+            border-bottom-left-radius: 70% 100%;
+            border-bottom-right-radius: 38% 100%;
+            transform: rotate(-2.1deg);
+            z-index: 0;
+        }
+        .site-footer::after {
+            content: '';
+            position: absolute;
+            top: -96px;
+            left: 8%;
+            width: 96%;
+            height: 156px;
+            background: var(--bg-start);
+            border-bottom-left-radius: 36% 100%;
+            border-bottom-right-radius: 64% 100%;
+            transform: rotate(1.5deg);
+            opacity: 0.95;
+            z-index: 0;
+        }
+        .site-footer .container {
+            position: relative;
+            z-index: 1;
+            padding-top: 7.4rem;
+            padding-bottom: 1.45rem;
+        }
+        .footer-heading {
+            color: #ffffff;
+            font-size: 1.04rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+        }
+        .footer-links {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+        .footer-links li {
+            margin-bottom: 0.48rem;
+        }
+        .footer-links a {
+            color: rgba(255, 255, 255, 0.84);
+            text-decoration: none;
+            font-size: 1.03rem;
+            line-height: 1.45;
+        }
+        .footer-links a:hover {
+            color: #ffffff;
+            text-decoration: underline;
+            text-decoration-color: rgba(255, 255, 255, 0.5);
+            text-underline-offset: 0.18em;
+        }
+        .footer-subscribe-copy {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(1.35rem, 2.2vw, 1.8rem);
+            font-weight: 700;
+            line-height: 1.2;
+            color: #ffffff;
+            margin-bottom: 1rem;
+        }
+        .footer-subscribe {
+            display: flex;
+            gap: 0.7rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .footer-input {
+            min-height: 3.2rem;
+            border: 0;
+            border-radius: 999px;
+            padding-inline: 1.25rem;
+            min-width: min(100%, 415px);
+            flex: 1 1 320px;
+            font-size: 1.05rem;
+            font-weight: 500;
+            color: #173930;
+            background: #f6fbf9;
+        }
+        .footer-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 0.2rem rgba(15, 143, 111, 0.36);
+        }
+        .btn-footer-subscribe {
+            border: 0;
+            border-radius: 999px;
+            min-height: 3.2rem;
+            padding: 0.7rem 2rem;
+            font-weight: 700;
+            font-size: 1.06rem;
+            color: #ffffff;
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            white-space: nowrap;
+        }
+        .btn-footer-subscribe:hover {
+            color: #ffffff;
+            background: linear-gradient(135deg, #12a57f, #0f8f6f);
+        }
+        .footer-social {
+            display: flex;
+            gap: 0.85rem;
+            margin-top: 1.1rem;
+        }
+        .footer-social a {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            text-decoration: none;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            font-size: 1.14rem;
+            transition: background 0.18s ease, transform 0.18s ease;
+        }
+        .footer-social a:hover {
+            background: rgba(15, 143, 111, 0.55);
+            transform: translateY(-1px);
+        }
+        .footer-bottom {
+            margin-top: 2.4rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            padding-top: 1.1rem;
+            color: rgba(255, 255, 255, 0.78);
+            font-size: 0.96rem;
+        }
+        .footer-legal {
+            display: flex;
+            gap: 1.3rem;
+            flex-wrap: wrap;
+        }
+        .footer-legal a {
+            color: rgba(255, 255, 255, 0.7);
             text-decoration: none;
         }
-        footer a:hover { color: #fff; }
-        .footer-brand {
-            font-family: 'Space Grotesk',sans-serif;
-            font-weight: 700;
-            font-size: 1.2rem;
-            color: #fff;
+        .footer-legal a:hover {
+            color: #ffffff;
         }
-        .footer-divider { border-color: rgba(255,255,255,.12); }
 
         @media (max-width: 992px) {
             .hero {
@@ -350,6 +576,37 @@ try {
             }
             .cta-banner {
                 padding: 36px 24px;
+            }
+            .intro-panel {
+                padding: 20px;
+            }
+            .intro-metrics {
+                grid-template-columns: 1fr;
+            }
+            .intro-points {
+                grid-template-columns: 1fr;
+            }
+            .site-footer::before {
+                top: -98px;
+                left: -10%;
+                width: 122%;
+                height: 170px;
+            }
+            .site-footer::after {
+                top: -68px;
+                left: 4%;
+                width: 104%;
+                height: 108px;
+            }
+            .site-footer .container {
+                padding-top: 5.8rem;
+            }
+            .footer-subscribe {
+                align-items: stretch;
+            }
+            .footer-input,
+            .btn-footer-subscribe {
+                width: 100%;
             }
         }
 
@@ -384,6 +641,56 @@ try {
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="hero-img-wrap text-center">
                     <div style="font-size:11rem;line-height:1;filter:drop-shadow(0 18px 32px rgba(11,111,86,.20));">🛍️</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ════════════════════ INTRODUCTION ════════════════════ -->
+<section class="intro-section">
+    <div class="container">
+        <div class="row g-3 g-lg-4 align-items-stretch">
+            <div class="col-lg-8">
+                <div class="intro-panel">
+                    <span class="section-label mb-2">Why Shop With Us</span>
+                    <h2 class="intro-title">A modern and dependable online shopping experience, built for everyday convenience.</h2>
+                    <p class="intro-text">
+                        E-commerce is designed to deliver a reliable digital marketplace with carefully selected products,
+                        transparent pricing, and a smooth purchase journey. From product discovery to secure checkout,
+                        every step is optimized to help you shop with confidence.
+                    </p>
+                    <p class="intro-text mt-3">
+                        Our team focuses on fast fulfillment, accurate stock visibility, and responsive customer support,
+                        so you can enjoy a consistent experience every time you place an order.
+                    </p>
+                    <ul class="intro-points">
+                        <li><i class="bi bi-patch-check"></i>Trusted product quality</li>
+                        <li><i class="bi bi-truck"></i>Fast and reliable delivery</li>
+                        <li><i class="bi bi-shield-lock"></i>Safe and secure checkout</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="intro-panel">
+                    <div class="intro-metrics">
+                        <div class="intro-metric">
+                            <span class="intro-metric-value">10K+</span>
+                            <span class="intro-metric-label">Curated products available</span>
+                        </div>
+                        <div class="intro-metric">
+                            <span class="intro-metric-value">Live</span>
+                            <span class="intro-metric-label">Real-time stock visibility</span>
+                        </div>
+                        <div class="intro-metric">
+                            <span class="intro-metric-value">Reliable</span>
+                            <span class="intro-metric-label">Fulfillment and delivery flow</span>
+                        </div>
+                        <div class="intro-metric">
+                            <span class="intro-metric-value">Protected</span>
+                            <span class="intro-metric-label">Secure checkout standards</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -457,41 +764,57 @@ try {
 </section>
 
 <!-- ════════════════════ FOOTER ════════════════════ -->
-<footer class="py-5 mt-3">
+<footer class="site-footer">
     <div class="container">
-        <div class="row g-4 mb-4">
-            <div class="col-md-4">
-                <div class="footer-brand mb-2">🛍 E-commerce</div>
-                <p style="font-size:13.5px;max-width:32ch;line-height:1.6;">Your one-stop shop for quality products at great prices, delivered right to your door.</p>
-            </div>
-            <div class="col-6 col-md-2">
-                <div class="fw-semibold text-white mb-3" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;">Shop</div>
-                <ul class="list-unstyled" style="font-size:13.5px;line-height:2;">
-                    <li><a href="products.php">All Products</a></li>
-                    <li><a href="products.php">Products</a></li>
-                    <li><a href="cart.php">Cart</a></li>
+        <div class="row g-4 g-xl-5">
+            <div class="col-6 col-md-3 col-xl-2">
+                <div class="footer-heading">Shop</div>
+                <ul class="footer-links">
+                    <li><a href="index.php#">Drinks</a></li>
+                    <li><a href="index.php#">Gift Cards</a></li>
+                    <li><a href="index.php#">Store Locator</a></li>
+                    <li><a href="index.php#">Refer a Friend</a></li>
                 </ul>
             </div>
-            <div class="col-6 col-md-2">
-                <div class="fw-semibold text-white mb-3" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;">Account</div>
-                <ul class="list-unstyled" style="font-size:13.5px;line-height:2;">
-                    <li><a href="member_login.php">Login</a></li>
-                    <li><a href="member_register.php">Register</a></li>
-                    <li><a href="userProfile.php">My Profile</a></li>
+            <div class="col-6 col-md-3 col-xl-2">
+                <div class="footer-heading">Help</div>
+                <ul class="footer-links">
+                    <li><a href="index.php#">Contact Us</a></li>
+                    <li><a href="index.php#">FAQ</a></li>
+                    <li><a href="index.php#">Accessibility</a></li>
                 </ul>
             </div>
-            <div class="col-md-4">
-                <div class="fw-semibold text-white mb-3" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;">Stay Updated</div>
-                <p style="font-size:13.5px;">Subscribe for deals and new arrivals.</p>
-                <form class="d-flex gap-2" action="#" onsubmit="return false;">
-                    <input type="email" class="form-control form-control-sm" placeholder="you@example.com" style="background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.15);color:#fff;">
-                    <button class="btn btn-sm btn-primary-custom flex-shrink-0" type="button">Subscribe</button>
+            <div class="col-12 col-md-3 col-xl-2">
+                <div class="footer-heading">About</div>
+                <ul class="footer-links">
+                    <li><a href="index.php#">Our Story</a></li>
+                    <li><a href="index.php#">Digest</a></li>
+                    <li><a href="index.php#">Ingredients</a></li>
+                    <li><a href="index.php#">Wholesale</a></li>
+                    <li><a href="index.php#">Careers</a></li>
+                </ul>
+            </div>
+            <div class="col-12 col-md-9 col-xl-6 ms-xl-auto">
+                <div class="footer-subscribe-copy">Sign up to get 10% off your first order</div>
+                <form class="footer-subscribe" action="#" onsubmit="return false;">
+                    <input type="email" class="form-control footer-input" placeholder="Your Email Address" aria-label="Your Email Address">
+                    <button class="btn btn-footer-subscribe" type="button">Subscribe</button>
                 </form>
+                <div class="footer-social" aria-label="Social links">
+                    <a href="index.php#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="index.php#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="index.php#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                    <a href="index.php#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+                </div>
             </div>
         </div>
-        <hr class="footer-divider">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2" style="font-size:12.5px;">
+        <div class="footer-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
             <span>&copy; <?php echo date('Y'); ?> E-commerce. All rights reserved.</span>
+            <div class="footer-legal">
+                <a href="index.php#">Terms of Service</a>
+                <a href="index.php#">Privacy Policy</a>
+                <a href="index.php#">Do Not Sell My Information</a>
+            </div>
         </div>
     </div>
 </footer>

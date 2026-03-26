@@ -62,6 +62,8 @@ if(isset($_SESSION['user_id'])){
         border-bottom: 1px solid var(--line);
         backdrop-filter: blur(8px);
         box-shadow: 0 8px 20px rgba(10, 36, 60, 0.08) !important;
+        position: relative;
+        z-index: 1040;
     }
 
     .site-nav .navbar-brand {
@@ -129,6 +131,7 @@ if(isset($_SESSION['user_id'])){
         border-radius: 12px;
         box-shadow: 0 14px 30px rgba(10, 36, 60, 0.12);
         padding: 6px;
+        z-index: 1060;
     }
 
     .site-nav .dropdown-item {
