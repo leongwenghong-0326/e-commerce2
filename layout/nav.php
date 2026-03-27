@@ -155,9 +155,31 @@ if(isset($_SESSION['user_id'])){
         flex-shrink: 0;
     }
 
+    .site-nav .cart-icon {
+        width: 1.35rem;
+        height: 1.35rem;
+    }
+
     .nav-search-shell {
         width: 100%;
         max-width: 420px;
+    }
+
+    .nav-search-shell form[role="search"] {
+        position: relative;
+    }
+
+    .nav-search-shell .search-icon {
+        position: absolute;
+        top: 50%;
+        left: 12px;
+        transform: translateY(-50%);
+        color: #6c757d;
+        pointer-events: none;
+    }
+
+    .nav-search-shell .search-input {
+        padding-left: 2.25rem;
     }
 
     @media (min-width: 992px) {
@@ -179,8 +201,9 @@ if(isset($_SESSION['user_id'])){
         <div class="collapse navbar-collapse" id="navbarContent">
             <div class="nav-search-shell my-3 my-lg-0">
                 <form class="d-flex" action="products.php" method="get" role="search">
+                    <span class="search-icon" aria-hidden="true"><i class="bi bi-search"></i></span>
                     <input
-                        class="form-control me-2"
+                        class="form-control me-2 search-input"
                         type="search"
                         name="q"
                         placeholder="Search products"
@@ -192,19 +215,10 @@ if(isset($_SESSION['user_id'])){
 
             <ul class="navbar-nav ms-lg-auto mb-2 mb-lg-0 align-items-lg-center">
                 <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center gap-1" href="products.php">
-                        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                            <path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h9A1.5 1.5 0 0 1 14 3.5V5h.5A.5.5 0 0 1 15 5.5v1a2.5 2.5 0 0 1-1 2V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8.5a2.5 2.5 0 0 1-1-2v-1A.5.5 0 0 1 1.5 5H2V3.5zM3.5 3a.5.5 0 0 0-.5.5V5h10V3.5a.5.5 0 0 0-.5-.5h-9zM2 6v.5a1.5 1.5 0 1 0 3 0V6H2zm4 0v.5a1.5 1.5 0 1 0 3 0V6H6zm4 0v.5a1.5 1.5 0 1 0 3 0V6h-3zM3 8.95V13h10V8.95a2.48 2.48 0 0 1-2-.95 2.49 2.49 0 0 1-3 0 2.49 2.49 0 0 1-3 0 2.48 2.48 0 0 1-2 .95z"/>
-                        </svg>
-                        <span>Shop</span>
-                    </a>
-                </li>
-                <li class="nav-item">
                     <a class="nav-link d-flex align-items-center gap-1" href="cart.php">
-                        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                        <svg class="nav-icon cart-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                             <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .49.402L2.89 3H14.5a.5.5 0 0 1 .49.598l-1.5 7A.5.5 0 0 1 13 11H4a.5.5 0 0 1-.49-.402L1.61 2H.5A.5.5 0 0 1 0 1.5zM4.41 10h8.18l1.286-6H3.124L4.41 10zM5.5 13a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm6 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
                         </svg>
-                        <span>Cart</span>
                         <?php if ($cartCount > 0): ?>
                             <span class="badge text-bg-success ms-1"><?php echo $cartCount; ?></span>
                         <?php endif; ?>
@@ -229,17 +243,10 @@ if(isset($_SESSION['user_id'])){
                         </ul>
                     </li>
                 <?php else: ?>
-                    <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center gap-1" href="member_login.php">
-                            <i class="bi bi-box-arrow-in-right"></i>
-                            <span>Login</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center gap-1" href="member_register.php">
-                            <i class="bi bi-person-plus"></i>
-                            <span>Register</span>
-                        </a>
+                    <li class="nav-item d-flex align-items-center">
+                        <a class="nav-link px-2" href="member_login.php">Login</a>
+                        <span class="text-muted">|</span>
+                        <a class="nav-link px-2" href="member_register.php">Register</a>
                     </li>
                 <?php endif; ?>
             </ul>
