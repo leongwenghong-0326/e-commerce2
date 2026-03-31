@@ -811,9 +811,129 @@ try {
 			cursor: not-allowed;
 		}
 
+		@media (max-width: 1199px) {
+			.shell {
+				min-width: 0;
+				grid-template-columns: 1fr;
+			}
+
+			.shell-scroll {
+				overflow-x: auto;
+				-webkit-overflow-scrolling: touch;
+			}
+
+			.sidebar {
+				min-height: auto;
+				border-right: none;
+				border-bottom: 1px solid var(--line);
+				padding: 22px 18px;
+			}
+
+			.nav-links {
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+				gap: 10px;
+			}
+
+			.main {
+				padding: 22px;
+			}
+		}
+
 		@media (max-width: 960px) {
 			.stats {
 				grid-template-columns: repeat(3, minmax(0, 1fr));
+			}
+
+			.main {
+				padding: 16px;
+			}
+
+			.topbar {
+				flex-wrap: wrap;
+				align-items: flex-start;
+				gap: 10px;
+			}
+
+			.admin-badge {
+				width: 100%;
+				text-align: center;
+			}
+
+			.nav-links {
+				grid-template-columns: 1fr;
+			}
+
+			.filter-form {
+				max-width: 100%;
+			}
+
+			.filter-form input,
+			.filter-form select,
+			.filter-form .btn {
+				width: 100%;
+				min-width: 100%;
+			}
+
+			.table-wrap {
+				overflow-x: auto;
+				-webkit-overflow-scrolling: touch;
+			}
+
+			table {
+				min-width: 980px;
+			}
+		}
+
+		@media (max-width: 767px) {
+			.main {
+				padding: 12px;
+			}
+
+			.panel-header {
+				padding: 12px;
+			}
+
+			.stats {
+				grid-template-columns: 1fr;
+			}
+
+			.status-form {
+				flex-direction: column;
+				align-items: stretch;
+			}
+
+			.status-form select,
+			.status-form .btn-save {
+				width: 100%;
+			}
+
+			.pagination {
+				flex-direction: column;
+				align-items: flex-start;
+				gap: 10px;
+			}
+
+			.pagination-controls {
+				flex-wrap: wrap;
+				gap: 6px;
+				width: 100%;
+			}
+
+			.items-text,
+			.address-text {
+				max-width: 240px;
+			}
+		}
+
+		@media (max-width: 575px) {
+			table {
+				min-width: 820px;
+			}
+
+			.pagination-link,
+			.pagination-btn {
+				min-width: 34px;
+				height: 34px;
 			}
 		}
 	</style>
@@ -907,7 +1027,7 @@ try {
 					<?php endif; ?>
 				</form>
 				<div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
-					<span class="muted"><?php echo $filteredTotal; ?> result(s)</span>
+					<span class="muted"><?php echo $filteredTotal; ?> order(s)</span>
 					<?php if ($activeShippingMethodLabel !== ''): ?>
 						<span class="filter-chip"><i class="bi bi-truck"></i> <?php echo htmlspecialchars($activeShippingMethodLabel); ?></span>
 					<?php endif; ?>

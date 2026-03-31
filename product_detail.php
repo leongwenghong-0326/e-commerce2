@@ -259,9 +259,12 @@ $stock = max(0, (int) ($product['StockQuantity'] ?? 0));
                         <label class="form-label" for="qty">Quantity</label>
                         <input id="qty" class="form-control" type="number" name="qty" min="1" max="<?php echo $stock; ?>" value="1" <?php echo $stock <= 0 ? 'disabled' : ''; ?>>
                     </div>
-                    <div class="col-6 col-md-8 d-grid">
+                    <div class="col-6 col-md-8 d-grid gap-2">
                         <button type="submit" class="btn btn-success" <?php echo $stock <= 0 ? 'disabled' : ''; ?>>
                             <i class="bi bi-cart-plus"></i> Add to Cart
+                        </button>
+                        <button type="submit" name="buy_now" value="1" class="btn btn-primary" <?php echo $stock <= 0 ? 'disabled' : ''; ?>>
+                            <i class="bi bi-lightning-charge"></i> Buy Now
                         </button>
                     </div>
                 </form>

@@ -3,8 +3,41 @@
 
 include_once 'config/config.php';
 
+function sanitizeRedirectTarget(?string $redirect): string
+{
+    $default = 'index.php';
+    $redirect = trim((string) $redirect);
+
+    if ($redirect === '') {
+        return $default;
+    }
+
+    if (str_starts_with($redirect, '//')) {
+        return $default;
+    }
+
+    $parts = parse_url($redirect);
+    if ($parts === false) {
+        return $default;
+    }
+
+    if (isset($parts['scheme']) || isset($parts['host'])) {
+        return $default;
+    }
+
+    $path = strtolower((string) ($parts['path'] ?? ''));
+    if ($path === 'member_login.php' || str_ends_with($path, '/member_login.php')) {
+        return $default;
+    }
+
+    return $redirect;
+}
+
+$requestedRedirect = (string) ($_POST['redirect'] ?? ($_GET['redirect'] ?? ''));
+$safeRedirect = sanitizeRedirectTarget($requestedRedirect);
+
 if (isset($_SESSION['user_id'])) {
-    header('Location: index.php');
+    header('Location: ' . $safeRedirect);
     exit();
 }
 
@@ -50,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['user_id'] = $user['UserId'];
             $_SESSION['role'] = $user['RoleName'];
 
-            sendJsonResponse(200, 'Login successful. Redirecting...', ['redirect' => 'index.php']);
+            sendJsonResponse(200, 'Login successful. Redirecting...', ['redirect' => $safeRedirect]);
         } else {
             sendJsonResponse(401, 'Invalid email or password.');
         }
@@ -312,6 +345,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <p class="sub">Log in to continue your shopping journey.</p>
 
             <form id="loginForm" action="member_login.php" method="post" novalidate>
+                <input type="hidden" name="redirect" value="<?php echo htmlspecialchars($safeRedirect); ?>">
                 <div class="field">
                     <label for="email">Email</label>
                     <input type="email" id="email" name="email" autocomplete="email" required>

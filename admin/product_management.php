@@ -1154,7 +1154,7 @@ try {
 			gap: 8px;
 			flex-wrap: wrap;
 			width: 100%;
-			max-width: 580px;
+			max-width: 100%;
 		}
 
 		.search-form input {
@@ -1614,9 +1614,145 @@ try {
 			}
 		}
 
+		@media (max-width: 1199px) {
+			.shell {
+				min-width: 0;
+				grid-template-columns: 1fr;
+			}
+
+			.shell-scroll {
+				overflow-x: auto;
+				-webkit-overflow-scrolling: touch;
+			}
+
+			.sidebar {
+				min-height: auto;
+				border-right: none;
+				border-bottom: 1px solid var(--line);
+				padding: 22px 18px;
+			}
+
+			.nav-links {
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+				gap: 10px;
+			}
+
+			.main {
+				padding: 22px;
+			}
+		}
+
 		@media (max-width: 960px) {
 			.stats {
 				grid-template-columns: 1fr;
+			}
+
+			.nav-links {
+				grid-template-columns: 1fr;
+			}
+
+			.main {
+				padding: 16px;
+			}
+
+			.topbar {
+				flex-wrap: wrap;
+				align-items: flex-start;
+				gap: 10px;
+			}
+
+			.admin-badge {
+				width: 100%;
+				text-align: center;
+			}
+
+			.search-form {
+				max-width: 100%;
+			}
+
+			.search-form input,
+			.search-form select,
+			.search-form .btn {
+				width: 100%;
+				min-width: 100%;
+			}
+
+			.table-wrap {
+				overflow-x: auto;
+				-webkit-overflow-scrolling: touch;
+			}
+
+			table {
+				min-width: 860px;
+			}
+		}
+
+		@media (max-width: 767px) {
+			.main {
+				padding: 12px;
+			}
+
+			.panel-header,
+			.form-grid {
+				padding: 12px;
+			}
+
+			.current-image-wrap {
+				flex-direction: column;
+				align-items: flex-start;
+			}
+
+			.image-grid {
+				display: grid;
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+				width: 100%;
+			}
+
+			.actions {
+				flex-direction: column;
+				align-items: stretch;
+			}
+
+			.actions .btn,
+			.actions .inline-form,
+			.actions .inline-form .btn {
+				width: 100%;
+			}
+
+			.pagination {
+				flex-direction: column;
+				align-items: flex-start;
+				gap: 10px;
+			}
+
+			.pagination-controls {
+				flex-wrap: wrap;
+				width: 100%;
+				gap: 6px;
+			}
+
+			.lightbox {
+				padding: 12px;
+			}
+		}
+
+		@media (max-width: 575px) {
+			table {
+				min-width: 820px;
+			}
+
+			.image-grid {
+				grid-template-columns: 1fr;
+			}
+
+			.product-image-card {
+				width: 100%;
+			}
+
+			.pagination-link,
+			.pagination-btn {
+				min-width: 34px;
+				height: 34px;
 			}
 		}
 
@@ -1832,7 +1968,7 @@ try {
 						<a class="btn btn-outline" href="product_management.php"><i class="bi bi-x-circle"></i> Clear</a>
 					<?php endif; ?>
 				</form>
-				<span class="muted"><?php echo $filteredTotal; ?> result(s)</span>
+				<span class="muted"><?php echo $filteredTotal; ?> product(s)</span>
 			</div>
 
 			<?php if (empty($products)): ?>

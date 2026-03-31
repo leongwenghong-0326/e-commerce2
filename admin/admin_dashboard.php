@@ -88,7 +88,7 @@ try {
 
         .dashboard-shell {
             width: 100%;
-            min-width: 1080px;
+            min-width: 0;
             margin: 0;
             display: grid;
             grid-template-columns: 280px minmax(0, 1fr);
@@ -103,9 +103,9 @@ try {
 
         .dashboard-scroll {
             width: 100%;
-            overflow-x: auto;
+            overflow-x: hidden;
             overflow-y: visible;
-            padding-bottom: 8px;
+            padding-bottom: 0;
         }
 
         @keyframes settle {
@@ -261,15 +261,99 @@ try {
             background: linear-gradient(135deg, #2d8f6e, #3ba88a);
         }
 
+        @media (max-width: 1199px) {
+            .dashboard-shell {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                min-height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--line);
+            }
+
+            .nav-links {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .main {
+                padding: 22px;
+            }
+        }
+
         @media (max-width: 960px) {
             .cards {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
+
+            .main {
+                padding: 20px;
+            }
+
+            .sidebar {
+                padding: 22px 18px;
+            }
+
+            .nav-links {
+                grid-template-columns: 1fr;
+            }
+
+            .topbar h1 {
+                font-size: clamp(1.4rem, 4.8vw, 1.9rem);
+            }
         }
 
         @media (max-width: 640px) {
+            .main {
+                padding: 14px;
+            }
+
+            .topbar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .admin-badge {
+                width: 100%;
+                text-align: center;
+            }
+
             .cards {
                 grid-template-columns: 1fr;
+            }
+
+            .stat-card {
+                padding: 16px;
+            }
+
+            .stat-value {
+                font-size: clamp(1.8rem, 10vw, 2.3rem);
+            }
+
+            .brand-tag {
+                font-size: 11px;
+                padding: 6px 10px;
+            }
+
+            .sidebar h2 {
+                font-size: 1.35rem;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .main {
+                padding: 12px;
+            }
+
+            .stat-card {
+                border-radius: 12px;
+                padding: 14px;
+            }
+
+            .stat-card h3 {
+                font-size: 0.92rem;
             }
         }
     </style>

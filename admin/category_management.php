@@ -656,6 +656,117 @@ $buildUrl = function (array $overrides = []) use ($search, $editId, $page): stri
 			border-bottom-color: rgba(31, 26, 21, 0.1);
 		}
 
+		@media (max-width: 1199px) {
+			.shell {
+				min-width: 0;
+				grid-template-columns: 1fr;
+			}
+
+			.shell-scroll {
+				overflow-x: auto;
+				-webkit-overflow-scrolling: touch;
+			}
+
+			.sidebar {
+				min-height: auto;
+				border-right: none;
+				border-bottom: 1px solid var(--line);
+				padding: 22px 18px;
+			}
+
+			.nav-links {
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+				gap: 10px;
+			}
+
+			.main {
+				padding: 22px;
+			}
+		}
+
+		@media (max-width: 991px) {
+			.main {
+				padding: 16px;
+			}
+
+			.topbar {
+				flex-wrap: wrap;
+				align-items: flex-start;
+				gap: 10px;
+			}
+
+			.badge-admin {
+				width: 100%;
+				text-align: center;
+			}
+
+			.nav-links {
+				grid-template-columns: 1fr;
+			}
+
+			.table-wrap,
+			.table-responsive {
+				overflow-x: auto;
+				-webkit-overflow-scrolling: touch;
+				max-width: 100%;
+			}
+
+			.table-responsive table {
+				min-width: 760px;
+			}
+		}
+
+		@media (max-width: 767px) {
+			.main {
+				padding: 12px;
+			}
+
+			.panel .panel-head,
+			.panel .panel-body {
+				padding: 12px;
+			}
+
+			.topbar h1 {
+				font-size: clamp(1.35rem, 6vw, 1.8rem);
+			}
+
+			.d-flex.gap-2 {
+				flex-wrap: wrap;
+			}
+
+			.d-flex.gap-2 .btn,
+			.d-flex.gap-2 form {
+				width: 100%;
+			}
+
+			.d-flex.gap-2 form .btn {
+				width: 100%;
+			}
+
+			tbody td {
+				padding: 10px 12px;
+			}
+		}
+
+		@media (max-width: 575px) {
+			.btn {
+				width: 100%;
+			}
+
+			.col-md-3.d-grid.gap-2 {
+				grid-template-columns: 1fr;
+			}
+
+			.table-responsive table {
+				min-width: 640px;
+			}
+
+			thead th[style],
+			tbody td[style] {
+				width: auto !important;
+			}
+		}
+
 	</style>
 </head>
 <body>
@@ -837,5 +948,6 @@ $buildUrl = function (array $overrides = []) use ($search, $editId, $page): stri
 		</main>
 	</div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

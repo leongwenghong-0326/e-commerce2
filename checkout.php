@@ -74,6 +74,15 @@ function formatDeliveryEstimate(int $minDays, int $maxDays): string
     return $from === $to ? $from : ($from . ' - ' . $to);
 }
 
+function calculateShippingFee(float $subtotal, float $baseFee, float $freeShippingThreshold): float
+{
+    if ($subtotal > $freeShippingThreshold) {
+        return 0.0;
+    }
+
+    return $baseFee;
+}
+
 function redirectCheckout(string $status, string $message): void
 {
     $q = http_build_query([
@@ -137,6 +146,8 @@ $shippingMethods = [
     ],
 ];
 
+$freeShippingThreshold = 50.00;
+
 $paymentMethods = [
     'cod' => [
         'label' => 'Cash on Delivery',
@@ -152,13 +163,6 @@ $paymentMethods = [
     ],
 ];
 
-$selectedShippingMethodKey = trim((string) ($_POST['shipping_method'] ?? 'standard'));
-if (!isset($shippingMethods[$selectedShippingMethodKey])) {
-    $selectedShippingMethodKey = 'standard';
-}
-$selectedShippingMethod = $shippingMethods[$selectedShippingMethodKey];
-$deliveryEstimateText = formatDeliveryEstimate((int) $selectedShippingMethod['eta_min'], (int) $selectedShippingMethod['eta_max']);
-
 $selectedPaymentMethodKey = trim((string) ($_POST['payment_method'] ?? 'cod'));
 if (!isset($paymentMethods[$selectedPaymentMethodKey])) {
     $selectedPaymentMethodKey = 'cod';
@@ -171,7 +175,24 @@ $subtotal = 0.0;
 foreach ($cartItems as $item) {
     $subtotal += ((float) $item['Price'] * (int) $item['Quantity']);
 }
-$shippingFee = (float) $selectedShippingMethod['fee'];
+$isFreeShippingEligible = $subtotal > $freeShippingThreshold;
+$availableShippingMethods = $shippingMethods;
+if (!$isFreeShippingEligible) {
+    unset($availableShippingMethods['standard']);
+}
+if (empty($availableShippingMethods)) {
+    $availableShippingMethods = $shippingMethods;
+}
+
+$defaultShippingMethodKey = (string) array_key_first($availableShippingMethods);
+$selectedShippingMethodKey = trim((string) ($_POST['shipping_method'] ?? $defaultShippingMethodKey));
+if (!isset($availableShippingMethods[$selectedShippingMethodKey])) {
+    $selectedShippingMethodKey = $defaultShippingMethodKey;
+}
+$selectedShippingMethod = $availableShippingMethods[$selectedShippingMethodKey];
+$deliveryEstimateText = formatDeliveryEstimate((int) $selectedShippingMethod['eta_min'], (int) $selectedShippingMethod['eta_max']);
+
+$shippingFee = calculateShippingFee($subtotal, (float) $selectedShippingMethod['fee'], $freeShippingThreshold);
 $totalAmount = $subtotal + $shippingFee;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -236,7 +257,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('Your cart is empty.');
         }
 
-        $finalTotal = (float) $shippingMethod['fee'];
+        $lockedSubtotal = 0.0;
         foreach ($lockedItems as $line) {
             $qty = max(1, (int) $line['Quantity']);
             $stock = max(0, (int) $line['StockQuantity']);
@@ -244,14 +265,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->rollBack();
                 throw new RuntimeException('Insufficient stock for ' . (string) $line['ProductName'] . '.');
             }
-            $finalTotal += ((float) $line['Price'] * $qty);
+            $lockedSubtotal += ((float) $line['Price'] * $qty);
         }
+
+        if ($shippingMethodKey === 'standard' && $lockedSubtotal <= $freeShippingThreshold) {
+            $pdo->rollBack();
+            throw new RuntimeException('Standard Delivery is available only for orders over RM ' . number_format($freeShippingThreshold, 2) . '.');
+        }
+
+        $isLockedFreeShippingEligible = $lockedSubtotal > $freeShippingThreshold;
+        $appliedShippingFee = calculateShippingFee($lockedSubtotal, (float) $shippingMethod['fee'], $freeShippingThreshold);
+        $finalTotal = $lockedSubtotal + $appliedShippingFee;
 
         $orderId = createUuidV4();
         $shippingAddress = buildShippingAddress($selectedAddress, $hasDetailedAddress);
         $shippingSummaryLines = [
             'Payment Method: ' . (string) $paymentMethod['label'],
-            'Shipping Method: ' . (string) $shippingMethod['label'] . ' (RM ' . number_format((float) $shippingMethod['fee'], 2) . ')',
+            'Shipping Method: ' . (string) $shippingMethod['label'] . ' (' . ($isLockedFreeShippingEligible ? 'Free' : 'RM ' . number_format($appliedShippingFee, 2)) . ')',
             'Estimated Delivery: ' . formatDeliveryEstimate((int) $shippingMethod['eta_min'], (int) $shippingMethod['eta_max']),
         ];
         if ($orderNotes !== '') {
@@ -476,15 +506,18 @@ $successOrderId = isset($_GET['success'], $_GET['order']) && $_GET['success'] ==
                                 <div class="mt-3">
                                     <label for="shipping_method" class="form-label fw-semibold">Shipping Method</label>
                                     <select class="form-select" id="shipping_method" name="shipping_method" required>
-                                        <?php foreach ($shippingMethods as $methodKey => $method): ?>
+                                        <?php foreach ($availableShippingMethods as $methodKey => $method): ?>
                                             <?php
                                             $methodEstimate = formatDeliveryEstimate((int) $method['eta_min'], (int) $method['eta_max']);
                                             ?>
                                             <option value="<?php echo htmlspecialchars($methodKey); ?>" data-fee="<?php echo htmlspecialchars(number_format((float) $method['fee'], 2, '.', '')); ?>" data-estimate="<?php echo htmlspecialchars($methodEstimate); ?>" <?php echo $methodKey === $selectedShippingMethodKey ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars((string) $method['label']); ?> - <?php echo (float) $method['fee'] > 0 ? 'RM ' . number_format((float) $method['fee'], 2) : 'Free'; ?>
+                                                <?php echo htmlspecialchars((string) $method['label']); ?> - RM <?php echo number_format((float) $method['fee'], 2); ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
+                                    <?php if ($isFreeShippingEligible): ?>
+                                        <div class="small text-success mt-1">Free shipping applied for orders over RM <?php echo number_format($freeShippingThreshold, 2); ?>.</div>
+                                    <?php endif; ?>
                                     <div class="small text-muted mt-1">
                                         Estimated delivery: <span id="deliveryEstimateText"><?php echo htmlspecialchars($deliveryEstimateText); ?></span>
                                     </div>
@@ -540,7 +573,7 @@ $successOrderId = isset($_GET['success'], $_GET['order']) && $_GET['success'] ==
                             </div>
                             <div class="d-flex justify-content-between mt-1">
                                 <span>Shipping</span>
-                                <strong id="shippingFeeText"><?php echo $shippingFee > 0 ? 'RM ' . number_format($shippingFee, 2) : 'Free'; ?></strong>
+                                <strong id="shippingFeeText"><?php echo $isFreeShippingEligible ? 'Free' : ('RM ' . number_format($shippingFee, 2)); ?></strong>
                             </div>
                             <div class="d-flex justify-content-between mt-1 small text-muted">
                                 <span>Delivery ETA</span>
@@ -556,7 +589,7 @@ $successOrderId = isset($_GET['success'], $_GET['order']) && $_GET['success'] ==
                             <hr>
                             <div class="d-flex justify-content-between">
                                 <span class="fw-semibold">Total</span>
-                                <strong id="orderTotalText" data-subtotal="<?php echo htmlspecialchars(number_format($subtotal, 2, '.', '')); ?>">RM <?php echo number_format($totalAmount, 2); ?></strong>
+                                <strong id="orderTotalText" data-subtotal="<?php echo htmlspecialchars(number_format($subtotal, 2, '.', '')); ?>" data-free-shipping-threshold="<?php echo htmlspecialchars(number_format($freeShippingThreshold, 2, '.', '')); ?>">RM <?php echo number_format($totalAmount, 2); ?></strong>
                             </div>
                             <div class="small text-muted mt-2">Payment gateway is not integrated yet; selected method is saved with your order.</div>
                         <?php endif; ?>
@@ -636,9 +669,11 @@ $successOrderId = isset($_GET['success'], $_GET['order']) && $_GET['success'] ==
         const fee = parseFloat(selectedOption.getAttribute('data-fee') || '0');
         const estimate = selectedOption.getAttribute('data-estimate') || '';
         const subtotal = parseFloat(orderTotalText.getAttribute('data-subtotal') || '0');
-        const total = subtotal + fee;
+        const freeShippingThreshold = parseFloat(orderTotalText.getAttribute('data-free-shipping-threshold') || '0');
+        const appliedFee = subtotal > freeShippingThreshold ? 0 : fee;
+        const total = subtotal + appliedFee;
 
-        shippingFeeText.textContent = fee > 0 ? ('RM ' + fee.toFixed(2)) : 'Free';
+        shippingFeeText.textContent = subtotal > freeShippingThreshold ? 'Free' : ('RM ' + appliedFee.toFixed(2));
         orderTotalText.textContent = 'RM ' + total.toFixed(2);
 
         if (deliveryEstimateText) {

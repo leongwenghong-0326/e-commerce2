@@ -631,12 +631,6 @@ try {
                 <span class="hero-pill">✦ New arrivals every week</span>
                 <h1>Shop the things you <span>love,</span> delivered fast.</h1>
                 <p class="lead mt-3 mb-4">Discover thousands of products at unbeatable prices. Free shipping on orders over RM 50.</p>
-                <div class="d-flex flex-wrap gap-3">
-                    <a href="products.php" class="btn btn-primary-custom">
-                        <i class="fas fa-shopping-bag me-2"></i>Shop Now
-                    </a>
-                    <a href="products.php" class="btn btn-outline-custom">Browse Products</a>
-                </div>
             </div>
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="hero-img-wrap text-center">
@@ -737,29 +731,6 @@ try {
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
-    </div>
-</section>
-
-<!-- ════════════════════ CTA BANNER ════════════════════ -->
-<section class="py-5">
-    <div class="container py-2">
-        <div class="cta-banner d-flex flex-column flex-md-row align-items-center justify-content-between gap-4">
-            <div style="position:relative;z-index:1;">
-                <h2 class="mb-2">Ready to start shopping?</h2>
-                <p>Create a free account today and unlock exclusive member deals.</p>
-            </div>
-            <div class="d-flex gap-3 flex-shrink-0" style="position:relative;z-index:1;">
-                <?php if (!isset($_SESSION['user_id'])): ?>
-                    <a href="member_register.php" class="btn btn-cta-white">
-                        Create Account <i class="fas fa-arrow-right ms-1"></i>
-                    </a>
-                <?php else: ?>
-                    <a href="products.php" class="btn btn-cta-white">
-                        Browse Products <i class="fas fa-arrow-right ms-1"></i>
-                    </a>
-                <?php endif; ?>
-            </div>
-        </div>
     </div>
 </section>
 

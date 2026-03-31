@@ -811,9 +811,126 @@ try {
 			color: var(--ink);
 		}
 
+		@media (max-width: 1199px) {
+			.shell {
+				min-width: 0;
+				grid-template-columns: 1fr;
+			}
+
+			.shell-scroll {
+				overflow-x: auto;
+				-webkit-overflow-scrolling: touch;
+			}
+
+			.sidebar {
+				min-height: auto;
+				border-right: none;
+				border-bottom: 1px solid var(--line);
+				padding: 22px 18px;
+			}
+
+			.nav-links {
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+				gap: 10px;
+			}
+
+			.main {
+				padding: 22px;
+			}
+		}
+
 		@media (max-width: 960px) {
 			.stats {
 				grid-template-columns: 1fr;
+			}
+
+			.main {
+				padding: 16px;
+			}
+
+			.topbar {
+				flex-wrap: wrap;
+				align-items: flex-start;
+				gap: 10px;
+			}
+
+			.admin-badge {
+				width: 100%;
+				text-align: center;
+			}
+
+			.nav-links {
+				grid-template-columns: 1fr;
+			}
+
+			.search-form {
+				max-width: 100%;
+			}
+
+			.search-form input,
+			.search-form select,
+			.search-form .btn {
+				width: 100%;
+				min-width: 100%;
+			}
+
+			.table-wrap {
+				overflow-x: auto;
+				-webkit-overflow-scrolling: touch;
+			}
+
+			table {
+				min-width: 760px;
+			}
+		}
+
+		@media (max-width: 767px) {
+			.main {
+				padding: 12px;
+			}
+
+			.panel-header {
+				padding: 12px;
+			}
+
+			.pagination {
+				flex-direction: column;
+				align-items: flex-start;
+				gap: 10px;
+			}
+
+			.pagination-controls {
+				flex-wrap: wrap;
+				gap: 6px;
+				width: 100%;
+			}
+
+			.profile-row {
+				flex-direction: column;
+				gap: 6px;
+			}
+
+			.profile-label,
+			.profile-value {
+				text-align: left;
+				min-width: 0;
+			}
+		}
+
+		@media (max-width: 575px) {
+			.btn,
+			.pagination-link,
+			.pagination-btn {
+				min-width: 34px;
+			}
+
+			table {
+				min-width: 640px;
+			}
+
+			.modal-body,
+			.modal-header {
+				padding: 14px;
 			}
 		}
 	</style>
@@ -882,7 +999,7 @@ try {
 						<a class="btn btn-outline" href="member_management.php"><i class="bi bi-x-circle"></i> Clear</a>
 					<?php endif; ?>
 				</form>
-				<span class="muted"><?php echo $totalSearchResults; ?> result(s)</span>
+				<span class="muted"><?php echo $totalSearchResults; ?> member(s)</span>
 			</div>
 
 			<?php if (empty($members)): ?>

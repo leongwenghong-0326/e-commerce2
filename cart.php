@@ -2,7 +2,11 @@
 require_once 'config/config.php';
 
 if (!isset($_SESSION['user_id'])) {
-	header('Location: member_login.php');
+	$redirectTarget = (string) ($_SERVER['REQUEST_URI'] ?? 'cart.php');
+	$loginUrl = 'member_login.php?' . http_build_query([
+		'redirect' => $redirectTarget,
+	]);
+	header('Location: ' . $loginUrl);
 	exit();
 }
 
@@ -206,6 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if (isset($_GET['add'])) {
 	$productId = trim((string) $_GET['add']);
 	$quantity = max(1, (int) ($_GET['qty'] ?? 1));
+	$buyNow = isset($_GET['buy_now']) && $_GET['buy_now'] === '1';
 
 	if ($productId !== '') {
 		try {
@@ -239,6 +244,11 @@ if (isset($_GET['add'])) {
 					':product_id' => $productId,
 					':qty' => $insertQty,
 				]);
+			}
+
+			if ($buyNow) {
+				header('Location: checkout.php');
+				exit();
 			}
 
 			redirectWithMessage('ok', 'Item added to cart.');
@@ -471,7 +481,7 @@ $grandTotal = $subtotal + $shippingFee;
 <div class="page-shell">
 	<section class="cart-header d-flex flex-wrap align-items-center justify-content-between gap-3">
 		<h1 class="cart-title">Your Cart</h1>
-		<a href="index.php" class="btn btn-outline-success"><i class="bi bi-arrow-left"></i> Continue Shopping</a>
+		<a href="products.php" class="btn btn-outline-success"><i class="bi bi-arrow-left"></i> Continue Shopping</a>
 	</section>
 
 	<?php if ($statusMessage !== ''): ?>
@@ -498,7 +508,7 @@ $grandTotal = $subtotal + $shippingFee;
 					<i class="bi bi-cart"></i>
 					<h3 class="h5 mt-3 mb-2">Your cart is empty</h3>
 					<p class="text-muted mb-3">Add products to your cart and they will appear here.</p>
-					<a href="index.php" class="btn btn-success">Browse Products</a>
+					<a href="products.php" class="btn btn-success">Browse Products</a>
 				</div>
 			<?php else: ?>
 				<?php foreach ($cartItems as $item): ?>

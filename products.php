@@ -71,14 +71,24 @@ if ($minPrice !== null && $maxPrice !== null && $minPrice > $maxPrice) {
     [$minPrice, $maxPrice] = [$maxPrice, $minPrice];
 }
 
-$sortBy = strtolower(trim((string) ($_GET['sort_by'] ?? 'newest')));
+$sortBy = strtolower(trim((string) ($_GET['sort_by'] ?? 'latest')));
 $sortDir = strtolower(trim((string) ($_GET['sort_dir'] ?? 'desc')));
 if (!in_array($sortDir, ['asc', 'desc'], true)) {
     $sortDir = 'desc';
 }
 
+if ($sortBy === 'newest') {
+    $sortBy = 'latest';
+}
+if ($sortBy === 'latest') {
+    $sortDir = 'desc';
+} elseif ($sortBy === 'earliest') {
+    $sortDir = 'asc';
+}
+
 $allowedSortColumns = [
-    'newest' => 'p.CreateDate',
+    'latest' => 'p.CreateDate',
+    'earliest' => 'p.CreateDate',
     'name' => 'p.ProductName',
     'price' => 'p.Price',
 ];
@@ -86,7 +96,7 @@ if ($supportsCategoryFeature) {
     $allowedSortColumns['category'] = 'CategoryName';
 }
 if (!isset($allowedSortColumns[$sortBy])) {
-    $sortBy = 'newest';
+    $sortBy = 'latest';
 }
 
 $availableCategories = [];
@@ -239,7 +249,7 @@ $buildUrl = function (array $overrides = []) use ($search, $sortBy, $sortDir, $m
     if (($query['category_filter'] ?? 'all') === 'all') {
         unset($query['category_filter']);
     }
-    if (($query['sort_by'] ?? 'newest') === 'newest') {
+    if (($query['sort_by'] ?? 'latest') === 'latest') {
         unset($query['sort_by']);
     }
     if (($query['sort_dir'] ?? 'desc') === 'desc') {
@@ -271,133 +281,65 @@ $buildUrl = function (array $overrides = []) use ($search, $sortBy, $sortDir, $m
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
         <link rel="stylesheet" href="asset/css/member-theme.css">
     <style>
-        :root {
-            --bg-start: #f4fbf8;
-            --bg-end: #e8f4ff;
-            --ink: #1b2530;
-            --panel: rgba(255, 255, 255, 0.84);
-            --line: rgba(27, 37, 48, 0.14);
-            --accent: #0f8f6f;
-            --accent-strong: #0b6f56;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: 'Outfit', sans-serif;
-            color: var(--ink);
-            background:
-                radial-gradient(circle at 10% 15%, rgba(15, 143, 111, 0.22), transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(39, 124, 198, 0.18), transparent 35%),
-                linear-gradient(135deg, var(--bg-start), var(--bg-end));
-        }
-
         .page-shell {
-            max-width: 1200px;
+            max-width: 1240px;
             margin: 24px auto 40px;
-            padding: 0 14px;
+            padding: 0 12px;
         }
 
-        .top-panel,
-        .empty {
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: 16px;
-            backdrop-filter: blur(8px);
-            box-shadow: 0 14px 30px rgba(10, 36, 60, 0.08);
+        .filter-card {
+            border-radius: 14px;
+            border: 1px solid rgba(27, 37, 48, 0.12);
+            overflow: hidden;
+            box-shadow: 0 10px 24px rgba(10, 36, 60, 0.08);
         }
 
-        .top-panel {
-            padding: 16px;
-            margin-bottom: 14px;
+        .filter-card .card-header {
+            background: #fff;
+            font-weight: 700;
+        }
+
+        .filter-form {
+            display: grid;
+            gap: 10px;
         }
 
         .title {
             margin: 0;
             font-family: 'Space Grotesk', sans-serif;
             font-weight: 700;
-            font-size: clamp(1.35rem, 3vw, 2rem);
-            letter-spacing: -0.012em;
-        }
-
-        .form-control,
-        .form-select {
-            border: 1px solid rgba(27, 37, 48, 0.2);
-            border-radius: 12px;
-            min-height: 44px;
-            background: rgba(255, 255, 255, 0.92);
-            font-size: 14px;
-        }
-
-        .form-control:focus,
-        .form-select:focus {
-            border-color: rgba(15, 143, 111, 0.75);
-            box-shadow: 0 0 0 4px rgba(15, 143, 111, 0.15);
-        }
-
-        .btn-success {
-            border: none;
-            border-radius: 12px;
-            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-            font-weight: 700;
-        }
-
-        .btn-success:hover {
-            box-shadow: 0 8px 16px rgba(11, 111, 86, 0.3);
+            font-size: clamp(1.2rem, 2.2vw, 1.6rem);
         }
 
         .product-card {
-            background: rgba(255, 255, 255, 0.92);
-            border: 1px solid var(--line);
-            border-radius: 16px;
+            border: 0;
+            border-radius: 14px;
             overflow: hidden;
-            height: 100%;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            box-shadow: 0 8px 18px rgba(10, 36, 60, 0.08);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
         }
 
         .product-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 16px 30px rgba(12, 46, 76, 0.12);
+            transform: translateY(-5px);
+            box-shadow: 0 14px 28px rgba(10, 36, 60, 0.14);
         }
 
         .product-image {
             width: 100%;
-            aspect-ratio: 4 / 3;
+            height: 210px;
             object-fit: cover;
-            background: #eef4f1;
-            border-bottom: 1px solid var(--line);
-        }
-
-        .product-body {
-            padding: 14px;
+            background: #f1f5f3;
         }
 
         .name {
             font-weight: 700;
-            font-size: 1rem;
             margin-bottom: 6px;
-        }
-
-        .desc {
-            font-size: 13px;
-            color: #607080;
-            min-height: 40px;
-            margin-bottom: 10px;
         }
 
         .price {
             font-weight: 700;
-            font-size: 1.08rem;
-            color: var(--accent-strong);
-            margin-bottom: 10px;
-        }
-
-        .stock-note {
-            font-size: 12px;
-            color: #667788;
+            color: #0b6f56;
+            margin-bottom: 6px;
         }
 
         .stock-badge {
@@ -424,22 +366,11 @@ $buildUrl = function (array $overrides = []) use ($search, $sortBy, $sortDir, $m
         }
 
         .empty {
+            border-radius: 14px;
+            border: 1px dashed rgba(27, 37, 48, 0.2);
+            background: rgba(255, 255, 255, 0.8);
             text-align: center;
-            padding: 36px 16px;
-        }
-
-        .pagination .page-link {
-            border-radius: 10px;
-            margin: 0 3px;
-            border: 1px solid var(--line);
-            color: #2a3f4f;
-            background: rgba(255,255,255,.86);
-        }
-
-        .pagination .page-item.active .page-link {
-            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-            border-color: var(--accent);
-            color: #fff;
+            padding: 38px 16px;
         }
     </style>
 </head>
@@ -447,126 +378,115 @@ $buildUrl = function (array $overrides = []) use ($search, $sortBy, $sortDir, $m
 <?php include 'layout/nav.php'; ?>
 
 <div class="page-shell">
-    <section class="top-panel">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
-            <h1 class="title">Shop Products</h1>
-            <span class="text-muted small"><?php echo $totalResults; ?> result(s)</span>
-        </div>
+    <div class="row g-4">
+        <aside class="col-12 col-lg-3">
+            <div class="card filter-card">
+                <div class="card-header">Filter</div>
+                <div class="card-body">
+                    <form method="get" action="products.php" class="filter-form">
+                        <?php if ($supportsCategoryFeature): ?>
+                            <select class="form-select" name="category_filter">
+                                <option value="all" <?php echo $categoryFilter === 'all' ? 'selected' : ''; ?>>All Categories</option>
+                                <?php foreach ($availableCategories as $availableCategory): ?>
+                                    <option value="<?php echo htmlspecialchars((string) $availableCategory); ?>" <?php echo $categoryFilter === (string) $availableCategory ? 'selected' : ''; ?>><?php echo htmlspecialchars((string) $availableCategory); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php endif; ?>
 
-        <form method="get" action="products.php" class="row g-2">
-            <div class="col-12 col-lg-3">
-                <input type="text" class="form-control" name="q" value="<?php echo htmlspecialchars($search); ?>" placeholder="Search by product name or description">
-            </div>
-            <?php if ($supportsCategoryFeature): ?>
-                <div class="col-6 col-lg-2">
-                    <select class="form-select" name="category_filter">
-                        <option value="all" <?php echo $categoryFilter === 'all' ? 'selected' : ''; ?>>All Categories</option>
-                        <?php foreach ($availableCategories as $availableCategory): ?>
-                            <option value="<?php echo htmlspecialchars((string) $availableCategory); ?>" <?php echo $categoryFilter === (string) $availableCategory ? 'selected' : ''; ?>><?php echo htmlspecialchars((string) $availableCategory); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-            <?php endif; ?>
-            <div class="col-6 col-lg-2">
-                <input type="number" class="form-control" step="0.01" min="0" name="min_price" value="<?php echo htmlspecialchars($minPriceRaw); ?>" placeholder="Min RM">
-            </div>
-            <div class="col-6 col-lg-2">
-                <input type="number" class="form-control" step="0.01" min="0" name="max_price" value="<?php echo htmlspecialchars($maxPriceRaw); ?>" placeholder="Max RM">
-            </div>
-            <div class="col-6 col-lg-2">
-                <select class="form-select" name="sort_by">
-                    <option value="newest" <?php echo $sortBy === 'newest' ? 'selected' : ''; ?>>Newest</option>
-                    <option value="name" <?php echo $sortBy === 'name' ? 'selected' : ''; ?>>Name</option>
-                    <?php if ($supportsCategoryFeature): ?>
-                        <option value="category" <?php echo $sortBy === 'category' ? 'selected' : ''; ?>>Category</option>
-                    <?php endif; ?>
-                    <option value="price" <?php echo $sortBy === 'price' ? 'selected' : ''; ?>>Price</option>
-                </select>
-            </div>
-            <div class="col-6 col-lg-1">
-                <select class="form-select" name="sort_dir">
-                    <option value="desc" <?php echo $sortDir === 'desc' ? 'selected' : ''; ?>>Desc</option>
-                    <option value="asc" <?php echo $sortDir === 'asc' ? 'selected' : ''; ?>>Asc</option>
-                </select>
-            </div>
-            <div class="col-12 col-lg-1 d-grid">
-                <button class="btn btn-success" type="submit">Go</button>
-            </div>
-        </form>
-    </section>
-
-    <?php if (empty($products)): ?>
-        <div class="empty">
-            <h2 class="h5 mb-2">No products found</h2>
-            <p class="text-muted mb-0">Try changing your search keywords or filters.</p>
-        </div>
-    <?php else: ?>
-        <div class="row g-3">
-            <?php foreach ($products as $product): ?>
-                <?php
-                $image = trim((string) ($product['PrimaryImage'] ?? ''));
-                $imageSrc = $image !== '' ? $image : 'asset/image/default_avatar.png';
-                $stock = max(0, (int) ($product['StockQuantity'] ?? 0));
-                $desc = trim((string) ($product['Description'] ?? ''));
-                if ($desc === '') {
-                    $desc = 'No description available.';
-                }
-                if (mb_strlen($desc) > 95) {
-                    $desc = mb_substr($desc, 0, 92) . '...';
-                }
-
-                $stockBadgeClass = 'stock-ok';
-                $stockLabel = 'In stock';
-                if ($stock <= 0) {
-                    $stockBadgeClass = 'stock-out';
-                    $stockLabel = 'Out of stock';
-                } elseif ($stock <= 5) {
-                    $stockBadgeClass = 'stock-low';
-                    $stockLabel = 'Low stock';
-                }
-                ?>
-                <div class="col-12 col-sm-6 col-lg-3">
-                    <article class="product-card">
-                        <a href="product_detail.php?id=<?php echo urlencode((string) $product['ProductId']); ?>">
-                            <img class="product-image" src="<?php echo htmlspecialchars($imageSrc); ?>" alt="<?php echo htmlspecialchars((string) $product['ProductName']); ?>">
-                        </a>
-                        <div class="product-body">
-                            <div class="name"><?php echo htmlspecialchars((string) $product['ProductName']); ?></div>
-                            <div class="stock-note mb-1 d-flex align-items-center gap-2">
-                                <?php if (!empty($product['CategoryIcon'])): ?>
-                                    <img src="<?php echo htmlspecialchars((string) $product['CategoryIcon']); ?>" alt="Category icon" style="width:18px;height:18px;object-fit:cover;border-radius:4px;border:1px solid rgba(27,37,48,0.15);">
-                                <?php endif; ?>
-                                <span>Category: <?php echo htmlspecialchars((string) ($product['CategoryName'] ?? 'Uncategorized')); ?></span>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <input type="number" class="form-control" step="0.01" min="0" name="min_price" value="<?php echo htmlspecialchars($minPriceRaw); ?>" placeholder="Min RM">
                             </div>
-                            <div class="desc"><?php echo htmlspecialchars($desc); ?></div>
-                            <div class="price">RM <?php echo number_format((float) $product['Price'], 2); ?></div>
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <div class="stock-note">Stock: <?php echo $stock; ?></div>
-                                <span class="stock-badge <?php echo $stockBadgeClass; ?>"><?php echo $stockLabel; ?></span>
-                            </div>
-
-                            <div class="d-grid gap-2">
-                                <a class="btn btn-outline-primary btn-sm" href="product_detail.php?id=<?php echo urlencode((string) $product['ProductId']); ?>">View Details</a>
-                                <a class="btn btn-success btn-sm <?php echo $stock <= 0 ? 'disabled' : ''; ?>" href="cart.php?add=<?php echo urlencode((string) $product['ProductId']); ?>&qty=1">Add to Cart</a>
+                            <div class="col-6">
+                                <input type="number" class="form-control" step="0.01" min="0" name="max_price" value="<?php echo htmlspecialchars($maxPriceRaw); ?>" placeholder="Max RM">
                             </div>
                         </div>
-                    </article>
-                </div>
-            <?php endforeach; ?>
-        </div>
 
-        <?php if ($totalPages > 1): ?>
-            <nav class="mt-4">
-                <ul class="pagination justify-content-center mb-0">
-                    <?php for ($page = 1; $page <= $totalPages; $page++): ?>
-                        <li class="page-item <?php echo $page === $currentPage ? 'active' : ''; ?>">
-                            <a class="page-link" href="<?php echo htmlspecialchars($buildUrl(['page' => $page])); ?>"><?php echo $page; ?></a>
-                        </li>
-                    <?php endfor; ?>
-                </ul>
-            </nav>
-        <?php endif; ?>
-    <?php endif; ?>
+                        <select class="form-select" name="sort_by">
+                            <option value="latest" <?php echo $sortBy === 'latest' ? 'selected' : ''; ?>>Latest</option>
+                            <option value="earliest" <?php echo $sortBy === 'earliest' ? 'selected' : ''; ?>>Earliest</option>
+                        </select>
+
+                        <button class="btn btn-success w-100" type="submit">Apply</button>
+                        <a class="btn btn-outline-secondary w-100" href="products.php">Reset</a>
+                    </form>
+                </div>
+            </div>
+        </aside>
+
+        <main class="col-12 col-lg-9">
+            <div class="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
+                <h1 class="title mb-0">All Products</h1>
+                <span class="text-muted small"><?php echo $totalResults; ?> product(s)</span>
+            </div>
+
+            <?php if (empty($products)): ?>
+                <div class="empty">
+                    <i class="bi bi-search fs-1 text-muted"></i>
+                    <h2 class="h5 mt-2 mb-1">No products found</h2>
+                    <p class="text-muted mb-0">Try changing your search keywords or filters.</p>
+                </div>
+            <?php else: ?>
+                <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+                    <?php foreach ($products as $product): ?>
+                        <?php
+                        $image = trim((string) ($product['PrimaryImage'] ?? ''));
+                        $imageSrc = $image !== '' ? $image : 'asset/image/default_avatar.png';
+                        $stock = max(0, (int) ($product['StockQuantity'] ?? 0));
+
+                        $stockBadgeClass = 'stock-ok';
+                        $stockLabel = 'In stock';
+                        if ($stock <= 0) {
+                            $stockBadgeClass = 'stock-out';
+                            $stockLabel = 'Out of stock';
+                        } elseif ($stock <= 5) {
+                            $stockBadgeClass = 'stock-low';
+                            $stockLabel = 'Low stock';
+                        }
+                        ?>
+                        <div class="col">
+                            <article class="card h-100 product-card">
+                                <a href="product_detail.php?id=<?php echo urlencode((string) $product['ProductId']); ?>">
+                                    <img class="product-image" src="<?php echo htmlspecialchars($imageSrc); ?>" alt="<?php echo htmlspecialchars((string) $product['ProductName']); ?>">
+                                </a>
+                                <div class="card-body">
+                                    <div class="name text-truncate"><?php echo htmlspecialchars((string) $product['ProductName']); ?></div>
+                                    <div class="small text-muted mb-1 d-flex align-items-center gap-2">
+                                        <?php if (!empty($product['CategoryIcon'])): ?>
+                                            <img src="<?php echo htmlspecialchars((string) $product['CategoryIcon']); ?>" alt="Category icon" style="width:18px;height:18px;object-fit:cover;border-radius:4px;border:1px solid rgba(27,37,48,0.15);">
+                                        <?php endif; ?>
+                                        <span><?php echo htmlspecialchars((string) ($product['CategoryName'] ?? 'Uncategorized')); ?></span>
+                                    </div>
+                                    <div class="price">RM <?php echo number_format((float) $product['Price'], 2); ?></div>
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <span class="text-muted small">Stock: <?php echo $stock; ?></span>
+                                        <span class="stock-badge <?php echo $stockBadgeClass; ?>"><?php echo $stockLabel; ?></span>
+                                    </div>
+                                    <div class="d-grid gap-2">
+                                        <a class="btn btn-outline-primary btn-sm" href="product_detail.php?id=<?php echo urlencode((string) $product['ProductId']); ?>">View Details</a>
+                                        <a class="btn btn-success btn-sm <?php echo $stock <= 0 ? 'disabled' : ''; ?>" href="cart.php?add=<?php echo urlencode((string) $product['ProductId']); ?>&qty=1">Add to Cart</a>
+                                        <a class="btn btn-primary btn-sm <?php echo $stock <= 0 ? 'disabled' : ''; ?>" href="cart.php?add=<?php echo urlencode((string) $product['ProductId']); ?>&qty=1&buy_now=1">Buy Now</a>
+                                    </div>
+                                </div>
+                            </article>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <?php if ($totalPages > 1): ?>
+                    <nav class="mt-4">
+                        <ul class="pagination justify-content-center mb-0">
+                            <?php for ($page = 1; $page <= $totalPages; $page++): ?>
+                                <li class="page-item <?php echo $page === $currentPage ? 'active' : ''; ?>">
+                                    <a class="page-link" href="<?php echo htmlspecialchars($buildUrl(['page' => $page])); ?>"><?php echo $page; ?></a>
+                                </li>
+                            <?php endfor; ?>
+                        </ul>
+                    </nav>
+                <?php endif; ?>
+            <?php endif; ?>
+        </main>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
