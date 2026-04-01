@@ -361,6 +361,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <a href="forget_password.php">Forgot Password?</a>
                 </div>
 
+                <p class="sub" style="margin: 12px 0 0;">
+                    Don't have an account?
+                    <a href="member_register.php">Register here</a>
+                </p>
+
                 <p id="message" class="message" aria-live="polite"></p>
             </form>
         </section>

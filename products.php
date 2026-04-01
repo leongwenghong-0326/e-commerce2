@@ -71,24 +71,28 @@ if ($minPrice !== null && $maxPrice !== null && $minPrice > $maxPrice) {
     [$minPrice, $maxPrice] = [$maxPrice, $minPrice];
 }
 
-$sortBy = strtolower(trim((string) ($_GET['sort_by'] ?? 'latest')));
+$sortBy = strtolower(trim((string) ($_GET['sort_by'] ?? 'desc')));
 $sortDir = strtolower(trim((string) ($_GET['sort_dir'] ?? 'desc')));
 if (!in_array($sortDir, ['asc', 'desc'], true)) {
     $sortDir = 'desc';
 }
 
-if ($sortBy === 'newest') {
-    $sortBy = 'latest';
+if ($sortBy === 'newest' || $sortBy === 'latest') {
+    $sortBy = 'desc';
 }
-if ($sortBy === 'latest') {
+if ($sortBy === 'earliest') {
+    $sortBy = 'asc';
+}
+
+if ($sortBy === 'desc') {
     $sortDir = 'desc';
-} elseif ($sortBy === 'earliest') {
+} elseif ($sortBy === 'asc') {
     $sortDir = 'asc';
 }
 
 $allowedSortColumns = [
-    'latest' => 'p.CreateDate',
-    'earliest' => 'p.CreateDate',
+    'desc' => 'p.CreateDate',
+    'asc' => 'p.CreateDate',
     'name' => 'p.ProductName',
     'price' => 'p.Price',
 ];
@@ -96,7 +100,7 @@ if ($supportsCategoryFeature) {
     $allowedSortColumns['category'] = 'CategoryName';
 }
 if (!isset($allowedSortColumns[$sortBy])) {
-    $sortBy = 'latest';
+    $sortBy = 'desc';
 }
 
 $availableCategories = [];
@@ -249,7 +253,7 @@ $buildUrl = function (array $overrides = []) use ($search, $sortBy, $sortDir, $m
     if (($query['category_filter'] ?? 'all') === 'all') {
         unset($query['category_filter']);
     }
-    if (($query['sort_by'] ?? 'latest') === 'latest') {
+    if (($query['sort_by'] ?? 'desc') === 'desc') {
         unset($query['sort_by']);
     }
     if (($query['sort_dir'] ?? 'desc') === 'desc') {
@@ -403,8 +407,8 @@ $buildUrl = function (array $overrides = []) use ($search, $sortBy, $sortDir, $m
                         </div>
 
                         <select class="form-select" name="sort_by">
-                            <option value="latest" <?php echo $sortBy === 'latest' ? 'selected' : ''; ?>>Latest</option>
-                            <option value="earliest" <?php echo $sortBy === 'earliest' ? 'selected' : ''; ?>>Earliest</option>
+                            <option value="desc" <?php echo $sortBy === 'desc' ? 'selected' : ''; ?>>Desc</option>
+                            <option value="asc" <?php echo $sortBy === 'asc' ? 'selected' : ''; ?>>Asc</option>
                         </select>
 
                         <button class="btn btn-success w-100" type="submit">Apply</button>

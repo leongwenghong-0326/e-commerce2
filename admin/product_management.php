@@ -1947,18 +1947,11 @@ try {
 					<?php endif; ?>
 					<input type="number" step="0.01" min="0" name="min_price" placeholder="Min RM" value="<?php echo htmlspecialchars($minPriceRaw); ?>">
 					<input type="number" step="0.01" min="0" name="max_price" placeholder="Max RM" value="<?php echo htmlspecialchars($maxPriceRaw); ?>">
-					<select name="sort_by">
-						<option value="newest" <?php echo $sortBy === 'newest' ? 'selected' : ''; ?>>Newest</option>
-						<option value="name" <?php echo $sortBy === 'name' ? 'selected' : ''; ?>>Name</option>
-						<?php if ($supportsCategoryFeature): ?>
-							<option value="category" <?php echo $sortBy === 'category' ? 'selected' : ''; ?>>Category</option>
-						<?php endif; ?>
-						<option value="price" <?php echo $sortBy === 'price' ? 'selected' : ''; ?>>Price</option>
-						<option value="stock" <?php echo $sortBy === 'stock' ? 'selected' : ''; ?>>Stock</option>
-						<?php if ($hasProductActiveColumn): ?>
+					<?php if ($hasProductActiveColumn): ?>
+						<select name="sort_by">
 							<option value="active" <?php echo $sortBy === 'active' ? 'selected' : ''; ?>>Status</option>
-						<?php endif; ?>
-					</select>
+						</select>
+					<?php endif; ?>
 					<select name="sort_dir">
 						<option value="desc" <?php echo $sortDir === 'desc' ? 'selected' : ''; ?>>Desc</option>
 						<option value="asc" <?php echo $sortDir === 'asc' ? 'selected' : ''; ?>>Asc</option>

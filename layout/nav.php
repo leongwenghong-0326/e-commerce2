@@ -214,16 +214,18 @@ if(isset($_SESSION['user_id'])){
             </div>
 
             <ul class="navbar-nav ms-lg-auto mb-2 mb-lg-0 align-items-lg-center">
-                <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center gap-1" href="cart.php">
-                        <svg class="nav-icon cart-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                            <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .49.402L2.89 3H14.5a.5.5 0 0 1 .49.598l-1.5 7A.5.5 0 0 1 13 11H4a.5.5 0 0 1-.49-.402L1.61 2H.5A.5.5 0 0 1 0 1.5zM4.41 10h8.18l1.286-6H3.124L4.41 10zM5.5 13a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm6 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
-                        </svg>
-                        <?php if ($cartCount > 0): ?>
-                            <span class="badge text-bg-success ms-1"><?php echo $cartCount; ?></span>
-                        <?php endif; ?>
-                    </a>
-                </li>
+                <?php if (isset($_SESSION['user_id'])): ?>
+                    <li class="nav-item">
+                        <a class="nav-link d-flex align-items-center gap-1" href="cart.php">
+                            <svg class="nav-icon cart-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .49.402L2.89 3H14.5a.5.5 0 0 1 .49.598l-1.5 7A.5.5 0 0 1 13 11H4a.5.5 0 0 1-.49-.402L1.61 2H.5A.5.5 0 0 1 0 1.5zM4.41 10h8.18l1.286-6H3.124L4.41 10zM5.5 13a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm6 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                            </svg>
+                            <?php if ($cartCount > 0): ?>
+                                <span class="badge text-bg-success ms-1"><?php echo $cartCount; ?></span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
+                <?php endif; ?>
                 <?php if(isset($_SESSION['user_id'])): ?>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
