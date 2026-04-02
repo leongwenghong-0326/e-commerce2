@@ -1,0 +1,225 @@
+:root {
+            --bg-start: #f4fbf8;
+            --bg-end: #e8f4ff;
+            --ink: #1b2530;
+            --panel: rgba(255, 255, 255, 0.82);
+            --line: rgba(27, 37, 48, 0.14);
+            --accent: #0f8f6f;
+            --accent-strong: #0b6f56;
+            --success: #176d43;
+            --danger: #b32020;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: 'Outfit', sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at 10% 15%, rgba(15, 143, 111, 0.22), transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(39, 124, 198, 0.18), transparent 35%),
+                linear-gradient(135deg, var(--bg-start), var(--bg-end));
+            display: grid;
+            place-items: center;
+            padding: 24px;
+        }
+
+        .shell {
+            width: min(980px, 100%);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-radius: 22px;
+            overflow: hidden;
+            border: 1px solid var(--line);
+            box-shadow: 0 22px 48px rgba(10, 36, 60, 0.14);
+            background: var(--panel);
+            backdrop-filter: blur(10px);
+            animation: rise 420ms ease-out;
+        }
+
+        @keyframes rise {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .hero {
+            padding: 48px;
+            border-right: 1px solid var(--line);
+            background:
+                linear-gradient(170deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.1)),
+                repeating-linear-gradient(140deg, transparent, transparent 16px, rgba(27, 37, 48, 0.03) 16px, rgba(27, 37, 48, 0.03) 32px);
+        }
+
+        .hero .pill {
+            display: inline-block;
+            padding: 7px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-weight: 600;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        .hero h1 {
+            margin: 16px 0 10px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2rem, 5vw, 3rem);
+            line-height: 1.05;
+            letter-spacing: -0.02em;
+            max-width: 11ch;
+        }
+
+        .hero p {
+            margin: 0;
+            line-height: 1.55;
+            max-width: 34ch;
+            opacity: 0.88;
+        }
+
+        .hero ul {
+            list-style: none;
+            padding: 0;
+            margin: 22px 0 0;
+            display: grid;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .hero li::before {
+            content: '\\2022 ';
+            color: var(--accent-strong);
+            font-weight: 700;
+        }
+
+        .panel {
+            padding: 48px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .panel h2 {
+            margin: 0;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.8rem;
+            letter-spacing: -0.01em;
+        }
+
+        .panel .sub {
+            margin: 8px 0 22px;
+            font-size: 14px;
+            opacity: 0.82;
+        }
+
+        .auth-switch {
+            margin: 12px 0 0;
+        }
+
+        .field {
+            margin-bottom: 14px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            border: 1px solid rgba(27, 37, 48, 0.2);
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-size: 15px;
+            font-family: inherit;
+            background: rgba(255, 255, 255, 0.92);
+            transition: border-color 160ms ease, box-shadow 160ms ease;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: rgba(15, 143, 111, 0.75);
+            box-shadow: 0 0 0 4px rgba(15, 143, 111, 0.15);
+        }
+
+        .actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 6px;
+        }
+
+        button {
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            color: #fff;
+            padding: 12px 16px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            min-width: 128px;
+            transition: transform 160ms ease, box-shadow 160ms ease;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 16px rgba(11, 111, 86, 0.35);
+        }
+
+        button:disabled {
+            opacity: 0.7;
+            cursor: wait;
+            transform: none;
+            box-shadow: none;
+        }
+
+        a {
+            color: #11589b;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .message {
+            margin-top: 14px;
+            min-height: 22px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .message.success { color: var(--success); }
+        .message.error { color: var(--danger); }
+
+        @media (max-width: 860px) {
+            .shell {
+                grid-template-columns: 1fr;
+            }
+
+            .hero {
+                border-right: none;
+                border-bottom: 1px solid var(--line);
+                padding: 32px;
+            }
+
+            .panel {
+                padding: 32px;
+            }
+
+            .actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+

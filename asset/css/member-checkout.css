@@ -1,0 +1,83 @@
+:root {
+            --bg-start: #f4fbf8;
+            --bg-end: #e8f4ff;
+            --ink: #1b2530;
+            --panel: rgba(255, 255, 255, 0.84);
+            --line: rgba(27, 37, 48, 0.14);
+            --accent: #0f8f6f;
+            --accent-strong: #0b6f56;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at 10% 15%, rgba(15, 143, 111, 0.22), transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(39, 124, 198, 0.18), transparent 35%),
+                linear-gradient(135deg, var(--bg-start), var(--bg-end));
+        }
+        .page-shell {
+            max-width: 1120px;
+            margin: 24px auto 40px;
+            padding: 0 14px;
+        }
+
+        .page-title {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            overflow: hidden;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 14px 30px rgba(10, 36, 60, 0.08);
+        }
+        .panel-head {
+            padding: 14px 16px;
+            border-bottom: 1px solid #e8f0eb;
+            font-weight: 700;
+        }
+        .address-card {
+            border: 1px solid #dae8e2;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        .line-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 0;
+            border-bottom: 1px solid #edf3ef;
+        }
+        .line-item:last-child {
+            border-bottom: none;
+        }
+
+        .btn-success {
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            font-weight: 700;
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 8px 16px rgba(11, 111, 86, 0.3);
+        }
+
+        .form-control,
+        .form-select {
+            border-radius: 12px;
+            border: 1px solid rgba(27, 37, 48, 0.2);
+            background: rgba(255, 255, 255, 0.92);
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: rgba(15, 143, 111, 0.75);
+            box-shadow: 0 0 0 4px rgba(15, 143, 111, 0.15);
+        }
+

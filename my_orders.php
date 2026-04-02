@@ -125,85 +125,15 @@ $orders = $orderStmt->fetchAll(PDO::FETCH_ASSOC);
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
         <link rel="stylesheet" href="asset/css/member-theme.css">
-    <style>
-        :root {
-            --bg-start: #f4fbf8;
-            --bg-end: #e8f4ff;
-            --ink: #1b2530;
-            --panel: rgba(255, 255, 255, 0.84);
-            --line: rgba(27, 37, 48, 0.14);
-            --accent: #0f8f6f;
-            --accent-strong: #0b6f56;
-        }
-
-        body {
-            font-family: 'Outfit', sans-serif;
-            color: var(--ink);
-            background:
-                radial-gradient(circle at 10% 15%, rgba(15, 143, 111, 0.22), transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(39, 124, 198, 0.18), transparent 35%),
-                linear-gradient(135deg, var(--bg-start), var(--bg-end));
-        }
-        .page-shell {
-            max-width: 1080px;
-            margin: 24px auto 40px;
-            padding: 0 14px;
-        }
-        .order-card {
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: 14px;
-            padding: 14px;
-            margin-bottom: 12px;
-            backdrop-filter: blur(8px);
-            box-shadow: 0 14px 30px rgba(10, 36, 60, 0.08);
-        }
-        .order-id {
-            font-family: 'Space Grotesk', sans-serif;
-            font-weight: 700;
-            font-size: 1rem;
-            margin-bottom: 6px;
-            word-break: break-all;
-        }
-        .meta {
-            font-size: 13px;
-            color: #607080;
-        }
-        .status-pill {
-            display: inline-block;
-            font-size: 12px;
-            font-weight: 700;
-            border-radius: 999px;
-            padding: 4px 10px;
-            background: #eef4f1;
-        }
-        .status-pending { color: #8a5a00; background: #fff2d6; }
-        .status-processing { color: #0f4a8a; background: #e1efff; }
-        .status-shipped { color: #5f3d9f; background: #ece3ff; }
-        .status-delivered { color: #1c6c41; background: #def4e7; }
-        .status-cancelled { color: #9c1f1f; background: #fce2e2; }
-
-        .pagination .page-link {
-            border-radius: 10px;
-            margin: 0 3px;
-            border: 1px solid var(--line);
-            color: #2a3f4f;
-            background: rgba(255,255,255,.86);
-        }
-
-        .pagination .page-item.active .page-link {
-            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-            border-color: var(--accent);
-            color: #fff;
-        }
-    </style>
+    <link rel="stylesheet" href="asset/css/member-my-orders.css">
+    
 </head>
 <body>
 <?php include 'layout/nav.php'; ?>
 
 <div class="page-shell">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-        <h1 class="h3 mb-0" style="font-family: 'Space Grotesk', sans-serif;">My Orders</h1>
+        <h1 class="h3 mb-0 page-title">My Orders</h1>
         <a href="products.php" class="btn btn-outline-success btn-sm">Continue Shopping</a>
     </div>
 
@@ -270,3 +200,4 @@ $orders = $orderStmt->fetchAll(PDO::FETCH_ASSOC);
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+

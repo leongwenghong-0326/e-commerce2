@@ -35,6 +35,14 @@ if(isset($_SESSION['user_id'])){
             return;
         }
 
+        var navCssExisting = document.querySelector('link[href*="asset/css/member-nav.css"]');
+        if (!navCssExisting) {
+            var navCss = document.createElement('link');
+            navCss.rel = 'stylesheet';
+            navCss.href = 'asset/css/member-nav.css';
+            document.head.appendChild(navCss);
+        }
+
         var existing = document.querySelector('link[href*="bootstrap-icons"]');
         if (existing) {
             return;
@@ -46,148 +54,7 @@ if(isset($_SESSION['user_id'])){
         document.head.appendChild(iconCss);
     })();
 </script>
-<style>
-    :root {
-        --bg-start: #f4fbf8;
-        --bg-end: #e8f4ff;
-        --ink: #1b2530;
-        --panel: rgba(255, 255, 255, 0.84);
-        --line: rgba(27, 37, 48, 0.14);
-        --accent: #0f8f6f;
-        --accent-strong: #0b6f56;
-    }
 
-    .site-nav {
-        background: var(--panel) !important;
-        border-bottom: 1px solid var(--line);
-        backdrop-filter: blur(8px);
-        box-shadow: 0 8px 20px rgba(10, 36, 60, 0.08) !important;
-        position: relative;
-        z-index: 1040;
-    }
-
-    .site-nav .navbar-brand {
-        font-family: 'Space Grotesk', sans-serif;
-        font-weight: 700;
-        letter-spacing: -0.01em;
-        color: var(--ink);
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .site-nav .brand-icon {
-        width: 26px;
-        height: 26px;
-        border-radius: 8px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
-        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-        box-shadow: 0 6px 12px rgba(11, 111, 86, 0.28);
-        font-size: 0.9rem;
-    }
-
-    .site-nav .nav-link {
-        color: var(--ink);
-        font-weight: 600;
-        border-radius: 10px;
-        padding: 8px 10px !important;
-    }
-
-    .site-nav .nav-link:hover,
-    .site-nav .nav-link:focus {
-        color: var(--accent-strong);
-        background: rgba(15, 143, 111, 0.08);
-    }
-
-    .site-nav .form-control {
-        border-radius: 12px;
-        border: 1px solid rgba(27, 37, 48, 0.2);
-        background: rgba(255, 255, 255, 0.92);
-    }
-
-    .site-nav .form-control:focus {
-        border-color: rgba(15, 143, 111, 0.75);
-        box-shadow: 0 0 0 4px rgba(15, 143, 111, 0.15);
-    }
-
-    .site-nav .btn-outline-success {
-        border-color: rgba(15, 143, 111, 0.45);
-        color: var(--accent-strong);
-        font-weight: 700;
-        border-radius: 12px;
-    }
-
-    .site-nav .btn-outline-success:hover {
-        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-        border-color: transparent;
-        color: #fff;
-    }
-
-    .site-nav .dropdown-menu {
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        box-shadow: 0 14px 30px rgba(10, 36, 60, 0.12);
-        padding: 6px;
-        z-index: 1060;
-    }
-
-    .site-nav .dropdown-item {
-        border-radius: 8px;
-        font-weight: 500;
-        padding: 8px 10px;
-    }
-
-    .site-nav .dropdown-item:hover {
-        background: rgba(15, 143, 111, 0.08);
-        color: var(--accent-strong);
-    }
-
-    .site-nav .badge.text-bg-success {
-        background: linear-gradient(135deg, var(--accent), var(--accent-strong)) !important;
-    }
-
-    .site-nav .nav-icon {
-        width: 1rem;
-        height: 1rem;
-        flex-shrink: 0;
-    }
-
-    .site-nav .cart-icon {
-        width: 1.35rem;
-        height: 1.35rem;
-    }
-
-    .nav-search-shell {
-        width: 100%;
-        max-width: 420px;
-    }
-
-    .nav-search-shell form[role="search"] {
-        position: relative;
-    }
-
-    .nav-search-shell .search-icon {
-        position: absolute;
-        top: 50%;
-        left: 12px;
-        transform: translateY(-50%);
-        color: #6c757d;
-        pointer-events: none;
-    }
-
-    .nav-search-shell .search-input {
-        padding-left: 2.25rem;
-    }
-
-    @media (min-width: 992px) {
-        .nav-search-shell {
-            margin: 0 auto;
-        }
-    }
-</style>
 <nav class="navbar navbar-expand-lg navbar-light site-nav">
     <div class="container-fluid">
         <a class="navbar-brand" href="index.php">

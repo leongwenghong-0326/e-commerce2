@@ -284,99 +284,8 @@ $buildUrl = function (array $overrides = []) use ($search, $sortBy, $sortDir, $m
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
         <link rel="stylesheet" href="asset/css/member-theme.css">
-    <style>
-        .page-shell {
-            max-width: 1240px;
-            margin: 24px auto 40px;
-            padding: 0 12px;
-        }
-
-        .filter-card {
-            border-radius: 14px;
-            border: 1px solid rgba(27, 37, 48, 0.12);
-            overflow: hidden;
-            box-shadow: 0 10px 24px rgba(10, 36, 60, 0.08);
-        }
-
-        .filter-card .card-header {
-            background: #fff;
-            font-weight: 700;
-        }
-
-        .filter-form {
-            display: grid;
-            gap: 10px;
-        }
-
-        .title {
-            margin: 0;
-            font-family: 'Space Grotesk', sans-serif;
-            font-weight: 700;
-            font-size: clamp(1.2rem, 2.2vw, 1.6rem);
-        }
-
-        .product-card {
-            border: 0;
-            border-radius: 14px;
-            overflow: hidden;
-            box-shadow: 0 8px 18px rgba(10, 36, 60, 0.08);
-            transition: transform 0.25s ease, box-shadow 0.25s ease;
-        }
-
-        .product-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 14px 28px rgba(10, 36, 60, 0.14);
-        }
-
-        .product-image {
-            width: 100%;
-            height: 210px;
-            object-fit: cover;
-            background: #f1f5f3;
-        }
-
-        .name {
-            font-weight: 700;
-            margin-bottom: 6px;
-        }
-
-        .price {
-            font-weight: 700;
-            color: #0b6f56;
-            margin-bottom: 6px;
-        }
-
-        .stock-badge {
-            display: inline-block;
-            font-size: 11px;
-            font-weight: 700;
-            border-radius: 999px;
-            padding: 4px 10px;
-        }
-
-        .stock-ok {
-            color: #14633b;
-            background: #dff4e8;
-        }
-
-        .stock-low {
-            color: #8a5a00;
-            background: #fff2d6;
-        }
-
-        .stock-out {
-            color: #9c1f1f;
-            background: #fce2e2;
-        }
-
-        .empty {
-            border-radius: 14px;
-            border: 1px dashed rgba(27, 37, 48, 0.2);
-            background: rgba(255, 255, 255, 0.8);
-            text-align: center;
-            padding: 38px 16px;
-        }
-    </style>
+    <link rel="stylesheet" href="asset/css/member-products.css">
+    
 </head>
 <body>
 <?php include 'layout/nav.php'; ?>
@@ -457,7 +366,7 @@ $buildUrl = function (array $overrides = []) use ($search, $sortBy, $sortDir, $m
                                     <div class="name text-truncate"><?php echo htmlspecialchars((string) $product['ProductName']); ?></div>
                                     <div class="small text-muted mb-1 d-flex align-items-center gap-2">
                                         <?php if (!empty($product['CategoryIcon'])): ?>
-                                            <img src="<?php echo htmlspecialchars((string) $product['CategoryIcon']); ?>" alt="Category icon" style="width:18px;height:18px;object-fit:cover;border-radius:4px;border:1px solid rgba(27,37,48,0.15);">
+                                            <img src="<?php echo htmlspecialchars((string) $product['CategoryIcon']); ?>" alt="Category icon" class="category-icon-mini">
                                         <?php endif; ?>
                                         <span><?php echo htmlspecialchars((string) ($product['CategoryName'] ?? 'Uncategorized')); ?></span>
                                     </div>
@@ -496,3 +405,4 @@ $buildUrl = function (array $overrides = []) use ($search, $sortBy, $sortDir, $m
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+

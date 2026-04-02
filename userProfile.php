@@ -51,7 +51,7 @@ function supportsDetailedAddressColumns(PDO $pdo): bool
     return $supportsDetailed;
 }
 
-// ─── AJAX POST handlers ────────────────────────────────────────────────────────
+// AJAX POST handlers
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
     $action = $_POST['action'];
@@ -291,7 +291,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     exit();
 }
 
-// ─── Page load: fetch profile & addresses ─────────────────────────────────────
+// Page load: fetch profile and addresses
 $stmt = $pdo->prepare(
     "SELECT u.Email, up.FirstName, up.LastName, up.PhoneNumber, up.ProfilePhotoUrl
      FROM Users u
@@ -317,81 +317,8 @@ $avatarSrc = htmlspecialchars($profile['ProfilePhotoUrl'] ?? 'asset/image/defaul
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
         <link rel="stylesheet" href="asset/css/member-theme.css">
-    <style>
-        :root {
-            --bg-start: #f4fbf8;
-            --bg-end: #e8f4ff;
-            --ink: #1b2530;
-            --panel: rgba(255, 255, 255, 0.84);
-            --line: rgba(27, 37, 48, 0.14);
-            --accent: #0f8f6f;
-            --accent-strong: #0b6f56;
-        }
-
-        body {
-            color: var(--ink);
-            background:
-                radial-gradient(circle at 10% 15%, rgba(15, 143, 111, 0.22), transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(39, 124, 198, 0.18), transparent 35%),
-                linear-gradient(135deg, var(--bg-start), var(--bg-end));
-        }
-
-        .avatar-circle { width: 80px; height: 80px; object-fit: cover; }
-        .avatar-preview { width: 100px; height: 100px; object-fit: cover; }
-        .toast-shell { position: fixed; top: 70px; right: 20px; z-index: 9999; min-width: 280px; }
-
-        .card {
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: 16px;
-            backdrop-filter: blur(8px);
-            box-shadow: 0 14px 30px rgba(10, 36, 60, 0.08);
-        }
-
-        .list-group {
-            border-radius: 14px;
-            overflow: hidden;
-            border: 1px solid var(--line);
-            background: var(--panel);
-            box-shadow: 0 14px 30px rgba(10, 36, 60, 0.08);
-        }
-
-        .list-group-item {
-            border-color: rgba(27, 37, 48, 0.08);
-            background: transparent;
-            color: var(--ink);
-        }
-
-        .list-group-item.active {
-            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-            border-color: var(--accent);
-            color: #fff;
-        }
-
-        .form-control,
-        .form-select {
-            border-radius: 12px;
-            border: 1px solid rgba(27, 37, 48, 0.2);
-            background: rgba(255, 255, 255, 0.92);
-        }
-
-        .form-control:focus,
-        .form-select:focus {
-            border-color: rgba(15, 143, 111, 0.75);
-            box-shadow: 0 0 0 4px rgba(15, 143, 111, 0.15);
-        }
-
-        .btn-primary {
-            border: none;
-            border-radius: 12px;
-            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-            font-weight: 700;
-        }
-
-        .btn-primary:hover {
-            box-shadow: 0 8px 16px rgba(11, 111, 86, 0.3);
-        }
-    </style>
+    <link rel="stylesheet" href="asset/css/member-profile.css">
+    
 </head>
 <body>
 <?php include 'layout/nav.php'; ?>
@@ -467,7 +394,7 @@ $avatarSrc = htmlspecialchars($profile['ProfilePhotoUrl'] ?? 'asset/image/defaul
                 <div class="tab-pane fade" id="tab-password">
                     <div class="card p-4">
                         <h5 class="mb-4">Change Password</h5>
-                        <form id="formPassword" style="max-width: 480px;">
+                        <form id="formPassword" class="profile-form-password">
                             <input type="hidden" name="action" value="change_password">
                             <div class="mb-3">
                                 <label class="form-label">Current Password</label>
@@ -563,7 +490,7 @@ $avatarSrc = htmlspecialchars($profile['ProfilePhotoUrl'] ?? 'asset/image/defaul
 
                         <hr>
                         <h6 class="mb-3">Add New Address</h6>
-                        <form id="formAddress" style="max-width: 540px;">
+                        <form id="formAddress" class="profile-form-address">
                             <input type="hidden" name="action" value="add_address">
                             <div class="mb-3">
                                 <label class="form-label">Recipient Name</label>
