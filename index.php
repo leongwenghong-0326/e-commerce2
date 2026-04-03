@@ -194,7 +194,7 @@ try {
             </div>
         </div>
         <div class="footer-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <span>&copy; <?php echo date('Y'); ?> E-commerce. All rights reserved.</span>
+            <span>&copy; <?php echo date('Y'); ?> ShopSphere. All rights reserved.</span>
             <div class="footer-legal">
                 <a href="index.php#">Terms of Service</a>
                 <a href="index.php#">Privacy Policy</a>
