@@ -59,7 +59,7 @@ if(isset($_SESSION['user_id'])){
     <div class="container-fluid">
         <a class="navbar-brand" href="index.php">
             <span class="brand-icon"><i class="bi bi-bag"></i></span>
-            <span>E-commerce</span>
+            <span>ShopSphere</span>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>

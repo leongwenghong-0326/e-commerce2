@@ -1393,8 +1393,8 @@ try {
 		counter.textContent = currentGallery.length > 1
 			? 'Image ' + (currentIndex + 1) + ' of ' + currentGallery.length
 			: 'Image 1 of 1';
-		prevBtn.disabled = currentGallery.length <= 1 || currentIndex === 0;
-		nextBtn.disabled = currentGallery.length <= 1 || currentIndex >= currentGallery.length - 1;
+		prevBtn.disabled = currentGallery.length <= 1;
+		nextBtn.disabled = currentGallery.length <= 1;
 	}
 
 	function openLightbox(src, alt, gallery, index) {
@@ -1434,11 +1434,7 @@ try {
 		if (currentGallery.length <= 1) {
 			return;
 		}
-		const nextIndex = currentIndex + step;
-		if (nextIndex < 0 || nextIndex >= currentGallery.length) {
-			return;
-		}
-		currentIndex = nextIndex;
+		currentIndex = (currentIndex + step + currentGallery.length) % currentGallery.length;
 		syncLightboxView(lightboxImg.alt || 'Product image preview');
 	}
 
