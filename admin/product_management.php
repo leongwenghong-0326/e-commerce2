@@ -861,6 +861,7 @@ try {
 			<a href="category_management.php"><i class="bi bi-tags"></i> Category Management</a>
 			<a href="member_management.php"><i class="bi bi-people"></i> Member Management</a>
 			<a href="order_management.php"><i class="bi bi-cart"></i> Order Management</a>
+			<a href="discount_management.php"><i class="bi bi-percent"></i> Discount Campaign</a>
 			<a href="admin_logout.php"><i class="bi bi-gear"></i> Logout</a>
 		</nav>
 	</aside>

@@ -1,0 +1,101 @@
+:root {
+    --bg: #f6f2e8;
+    --ink: #1f1a15;
+    --paper: rgba(255, 255, 255, 0.8);
+    --line: rgba(31, 26, 21, 0.16);
+    --accent: #da5a1b;
+    --accent-strong: #b74009;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: 'IBM Plex Sans', sans-serif;
+    color: var(--ink);
+    background:
+        radial-gradient(circle at 18% 18%, rgba(218, 90, 27, 0.16), transparent 40%),
+        radial-gradient(circle at 82% 84%, rgba(47, 102, 179, 0.14), transparent 38%),
+        linear-gradient(145deg, #f7f0df 0%, #f3ebdf 52%, #efe4ce 100%);
+}
+
+.dashboard-shell {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    background: var(--paper);
+    backdrop-filter: blur(8px);
+}
+
+.main {
+    padding: 30px;
+}
+
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 18px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+}
+
+.topbar h1 {
+    margin: 0;
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(1.5rem, 2.4vw, 2rem);
+}
+
+.panel-card {
+    background: rgba(255, 255, 255, 0.86);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px;
+    box-shadow: 0 8px 20px rgba(35, 24, 14, 0.08);
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.summary-item {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.summary-item .label {
+    display: block;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #6b5c4d;
+    margin-bottom: 4px;
+}
+
+.priority-input {
+    width: 84px;
+}
+
+.min-subtotal-input {
+    width: 110px;
+}
+
+@media (max-width: 1199px) {
+    .dashboard-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .main {
+        padding: 20px;
+    }
+
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+}

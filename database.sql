@@ -116,6 +116,22 @@ CREATE TABLE OrderItems (
     FOREIGN KEY (ProductId) REFERENCES Products(ProductId)
 );
 
+-- 10. 折扣活动表（可启用多个策略，按优先级和门槛自动应用）
+CREATE TABLE CampaignDiscounts (
+    CampaignId CHAR(36) PRIMARY KEY,
+    DiscountKey VARCHAR(50) NOT NULL UNIQUE,
+    IsActive BOOLEAN NOT NULL DEFAULT FALSE,
+    Priority INT NOT NULL DEFAULT 100,
+    MinSubtotal DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    UpdatedDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO CampaignDiscounts (CampaignId, DiscountKey, IsActive, Priority, MinSubtotal, UpdatedDate)
+VALUES
+    (UUID(), 'none', FALSE, 999, 0.00, NOW()),
+    (UUID(), 'percentage_10', FALSE, 10, 0.00, NOW()),
+    (UUID(), 'flat_50', FALSE, 20, 200.00, NOW());
+
 INSERT INTO Roles (RoleId, RoleName) 
 VALUES 
 (UUID(), 'Admin'),

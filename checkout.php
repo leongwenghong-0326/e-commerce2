@@ -1,5 +1,6 @@
 <?php
 require_once 'config/config.php';
+require_once 'discount_system.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: member_login.php');
@@ -171,10 +172,25 @@ $selectedPaymentMethod = $paymentMethods[$selectedPaymentMethodKey];
 
 $orderNotesInput = trim((string) ($_POST['order_notes'] ?? ''));
 
+$activeDiscountContexts = getActiveDiscountContexts($pdo);
+$activeDiscountLabelText = empty($activeDiscountContexts)
+    ? 'No active discount campaign'
+    : implode(', ', array_map(
+    static fn(array $ctx): string => (string) $ctx['label'],
+    $activeDiscountContexts
+));
+
 $subtotal = 0.0;
 foreach ($cartItems as $item) {
     $subtotal += ((float) $item['Price'] * (int) $item['Quantity']);
 }
+$eligibleDiscountContexts = getEligibleDiscountContexts($subtotal, $activeDiscountContexts);
+$appliedDiscountLabelText = empty($eligibleDiscountContexts)
+    ? 'No eligible discount for current subtotal'
+    : implode(', ', array_map(static fn(array $ctx): string => (string) $ctx['label'], $eligibleDiscountContexts));
+
+$discountedSubtotal = applyDiscountContexts($subtotal, $eligibleDiscountContexts);
+$discountAmount = max(0, $subtotal - $discountedSubtotal);
 $isFreeShippingEligible = $subtotal > $freeShippingThreshold;
 $availableShippingMethods = $shippingMethods;
 if (!$isFreeShippingEligible) {
@@ -193,7 +209,7 @@ $selectedShippingMethod = $availableShippingMethods[$selectedShippingMethodKey];
 $deliveryEstimateText = formatDeliveryEstimate((int) $selectedShippingMethod['eta_min'], (int) $selectedShippingMethod['eta_max']);
 
 $shippingFee = calculateShippingFee($subtotal, (float) $selectedShippingMethod['fee'], $freeShippingThreshold);
-$totalAmount = $subtotal + $shippingFee;
+$totalAmount = $discountedSubtotal + $shippingFee;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $csrf = (string) ($_POST['csrf'] ?? '');
@@ -274,13 +290,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $isLockedFreeShippingEligible = $lockedSubtotal > $freeShippingThreshold;
+        $lockedEligibleDiscountContexts = getEligibleDiscountContexts($lockedSubtotal, $activeDiscountContexts);
+        $lockedAppliedDiscountLabelText = empty($lockedEligibleDiscountContexts)
+            ? 'No eligible discount for current subtotal'
+            : implode(', ', array_map(static fn(array $ctx): string => (string) $ctx['label'], $lockedEligibleDiscountContexts));
+
+        $lockedDiscountedSubtotal = applyDiscountContexts($lockedSubtotal, $lockedEligibleDiscountContexts);
+        $lockedDiscountAmount = max(0, $lockedSubtotal - $lockedDiscountedSubtotal);
         $appliedShippingFee = calculateShippingFee($lockedSubtotal, (float) $shippingMethod['fee'], $freeShippingThreshold);
-        $finalTotal = $lockedSubtotal + $appliedShippingFee;
+        $finalTotal = $lockedDiscountedSubtotal + $appliedShippingFee;
 
         $orderId = createUuidV4();
         $shippingAddress = buildShippingAddress($selectedAddress, $hasDetailedAddress);
         $shippingSummaryLines = [
             'Payment Method: ' . (string) $paymentMethod['label'],
+            'Discount Strategy: ' . $lockedAppliedDiscountLabelText . ' (Saved RM ' . number_format($lockedDiscountAmount, 2) . ')',
             'Shipping Method: ' . (string) $shippingMethod['label'] . ' (' . ($isLockedFreeShippingEligible ? 'Free' : 'RM ' . number_format($appliedShippingFee, 2)) . ')',
             'Estimated Delivery: ' . formatDeliveryEstimate((int) $shippingMethod['eta_min'], (int) $shippingMethod['eta_max']),
         ];
@@ -446,6 +470,13 @@ $successOrderId = isset($_GET['success'], $_GET['order']) && $_GET['success'] ==
                                     </div>
                                 </div>
 
+                                <div class="mt-3 small text-muted">
+                                    Active discount campaign: <strong><?php echo htmlspecialchars($activeDiscountLabelText); ?></strong>
+                                </div>
+                                <div class="mt-1 small text-muted">
+                                    Auto-applied discount(s): <strong><?php echo htmlspecialchars($appliedDiscountLabelText); ?></strong>
+                                </div>
+
                                 <div class="mt-3">
                                     <label for="payment_method" class="form-label fw-semibold">Payment Method</label>
                                     <select class="form-select" id="payment_method" name="payment_method" required>
@@ -495,6 +526,10 @@ $successOrderId = isset($_GET['success'], $_GET['order']) && $_GET['success'] ==
                                 <strong>RM <?php echo number_format($subtotal, 2); ?></strong>
                             </div>
                             <div class="d-flex justify-content-between mt-1">
+                                <span>Discount</span>
+                                <strong id="discountAmountText" data-discount-amount="<?php echo htmlspecialchars(number_format($discountAmount, 2, '.', '')); ?>"><?php echo $discountAmount > 0 ? ('- RM ' . number_format($discountAmount, 2)) : 'RM 0.00'; ?></strong>
+                            </div>
+                            <div class="d-flex justify-content-between mt-1">
                                 <span>Shipping</span>
                                 <strong id="shippingFeeText"><?php echo $isFreeShippingEligible ? 'Free' : ('RM ' . number_format($shippingFee, 2)); ?></strong>
                             </div>
@@ -508,6 +543,10 @@ $successOrderId = isset($_GET['success'], $_GET['order']) && $_GET['success'] ==
                                     <i id="summaryPaymentIcon" class="bi bi-cash-coin me-1" aria-hidden="true"></i>
                                     <span id="summaryPaymentMethodLabel"><?php echo htmlspecialchars((string) $selectedPaymentMethod['label']); ?></span>
                                 </strong>
+                            </div>
+                            <div class="d-flex justify-content-between mt-1 small text-muted">
+                                <span>Discount Strategy</span>
+                                <strong id="summaryDiscountLabel"><?php echo htmlspecialchars($appliedDiscountLabelText); ?></strong>
                             </div>
                             <hr>
                             <div class="d-flex justify-content-between">
@@ -540,6 +579,7 @@ $successOrderId = isset($_GET['success'], $_GET['order']) && $_GET['success'] ==
                         <span id="confirmPaymentMethodLabel"><?php echo htmlspecialchars((string) $selectedPaymentMethod['label']); ?></span>
                     </span>
                 </div>
+                <div class="small text-muted">Discount: <span id="confirmDiscountLabel"><?php echo htmlspecialchars($appliedDiscountLabelText); ?></span></div>
                 <div class="small text-muted">Shipping Method: <span id="confirmShippingMethod"><?php echo htmlspecialchars((string) $selectedShippingMethod['label']); ?></span></div>
                 <div class="small text-muted">Estimated Delivery: <span id="confirmDeliveryEstimate"><?php echo htmlspecialchars($deliveryEstimateText); ?></span></div>
             </div>
@@ -560,6 +600,7 @@ $successOrderId = isset($_GET['success'], $_GET['order']) && $_GET['success'] ==
     const shippingSelect = document.getElementById('shipping_method');
     const paymentSelect = document.getElementById('payment_method');
     const shippingFeeText = document.getElementById('shippingFeeText');
+    const discountAmountText = document.getElementById('discountAmountText');
     const orderTotalText = document.getElementById('orderTotalText');
     const deliveryEstimateText = document.getElementById('deliveryEstimateText');
     const summaryDeliveryEstimate = document.getElementById('summaryDeliveryEstimate');
@@ -570,6 +611,8 @@ $successOrderId = isset($_GET['success'], $_GET['order']) && $_GET['success'] ==
     const confirmPaymentMethod = document.getElementById('confirmPaymentMethod');
     const confirmPaymentIcon = document.getElementById('confirmPaymentIcon');
     const confirmPaymentMethodLabel = document.getElementById('confirmPaymentMethodLabel');
+    const summaryDiscountLabel = document.getElementById('summaryDiscountLabel');
+    const confirmDiscountLabel = document.getElementById('confirmDiscountLabel');
     const confirmShippingMethod = document.getElementById('confirmShippingMethod');
     const confirmDeliveryEstimate = document.getElementById('confirmDeliveryEstimate');
 
@@ -584,7 +627,7 @@ $successOrderId = isset($_GET['success'], $_GET['order']) && $_GET['success'] ==
     }
 
     function updateCheckoutSummary() {
-        if (!shippingSelect || !shippingFeeText || !orderTotalText) {
+        if (!shippingSelect || !shippingFeeText || !orderTotalText || !discountAmountText) {
             return;
         }
 
@@ -592,11 +635,13 @@ $successOrderId = isset($_GET['success'], $_GET['order']) && $_GET['success'] ==
         const fee = parseFloat(selectedOption.getAttribute('data-fee') || '0');
         const estimate = selectedOption.getAttribute('data-estimate') || '';
         const subtotal = parseFloat(orderTotalText.getAttribute('data-subtotal') || '0');
+        const discountAmount = parseFloat(discountAmountText.getAttribute('data-discount-amount') || '0');
         const freeShippingThreshold = parseFloat(orderTotalText.getAttribute('data-free-shipping-threshold') || '0');
         const appliedFee = subtotal > freeShippingThreshold ? 0 : fee;
-        const total = subtotal + appliedFee;
+        const total = Math.max(0, subtotal - discountAmount) + appliedFee;
 
         shippingFeeText.textContent = subtotal > freeShippingThreshold ? 'Free' : ('RM ' + appliedFee.toFixed(2));
+        discountAmountText.textContent = discountAmount > 0 ? ('- RM ' + discountAmount.toFixed(2)) : 'RM 0.00';
         orderTotalText.textContent = 'RM ' + total.toFixed(2);
 
         if (deliveryEstimateText) {
@@ -654,6 +699,8 @@ $successOrderId = isset($_GET['success'], $_GET['order']) && $_GET['success'] ==
         shippingSelect.addEventListener('change', updateCheckoutSummary);
         updateCheckoutSummary();
     }
+
+    updateCheckoutSummary();
 
     if (paymentSelect) {
         paymentSelect.addEventListener('change', updatePaymentSummary);

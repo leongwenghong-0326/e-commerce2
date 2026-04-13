@@ -1,5 +1,6 @@
 <?php
 require_once 'config/config.php';
+require_once 'discount_system.php';
 
 if (!isset($_SESSION['user_id'])) {
 	$redirectTarget = (string) ($_SERVER['REQUEST_URI'] ?? 'cart.php');
@@ -258,6 +259,8 @@ if (isset($_GET['add'])) {
 	}
 }
 
+$activeDiscountContexts = getActiveDiscountContexts($pdo);
+
 $statusType = '';
 $statusMessage = '';
 if (isset($_GET['status'], $_GET['message'])) {
@@ -295,8 +298,16 @@ foreach ($cartItems as $item) {
 	$subtotal += $lineTotal;
 }
 
+$eligibleDiscountContexts = getEligibleDiscountContexts($subtotal, $activeDiscountContexts);
+$appliedDiscountLabelText = empty($eligibleDiscountContexts)
+	? 'No eligible discount for current subtotal'
+	: implode(', ', array_map(static fn(array $ctx): string => (string) $ctx['label'], $eligibleDiscountContexts));
+
+$discountedSubtotal = applyDiscountContexts($subtotal, $eligibleDiscountContexts);
+$discountAmount = max(0, $subtotal - $discountedSubtotal);
+
 $shippingFee = 0.0;
-$grandTotal = $subtotal + $shippingFee;
+$grandTotal = $discountedSubtotal + $shippingFee;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -409,8 +420,16 @@ $grandTotal = $subtotal + $shippingFee;
 			</header>
 			<div class="summary-body">
 				<div class="sum-row">
+					<span>Auto Applied Discounts</span>
+					<strong><?php echo htmlspecialchars($appliedDiscountLabelText); ?></strong>
+				</div>
+				<div class="sum-row">
 					<span>Subtotal</span>
 					<strong>RM <?php echo number_format($subtotal, 2); ?></strong>
+				</div>
+				<div class="sum-row">
+					<span>Discount</span>
+					<strong><?php echo $discountAmount > 0 ? ('- RM ' . number_format($discountAmount, 2)) : 'RM 0.00'; ?></strong>
 				</div>
 				<div class="sum-row">
 					<span>Shipping</span>
