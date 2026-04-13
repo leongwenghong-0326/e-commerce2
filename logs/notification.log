@@ -1,0 +1,28 @@
+[2026-04-13 10:21:47] channel=email recipient=leongwenghong5@gmail.com message=Order 8732e6ff-ab98-4a73-bb93-4fd1cd115020 has been placed successfully. Total amount: RM 399.00.
+[2026-04-13 10:21:47] channel=sms recipient=01116860326 message=Order 8732e6ff-ab98-4a73-bb93-4fd1cd115020 has been placed successfully. Total amount: RM 399.00.
+[2026-04-13 10:21:47] channel=whatsapp recipient=01116860326 message=Order 8732e6ff-ab98-4a73-bb93-4fd1cd115020 has been placed successfully. Total amount: RM 399.00.
+[2026-04-13 10:23:29] channel=email recipient=student@example.com message=Demo order ORD-DEMO-001 has been placed successfully.
+[2026-04-13 10:23:29] channel=sms recipient=+60123456789 message=Demo order ORD-DEMO-001 has been placed successfully.
+[2026-04-13 10:23:29] channel=whatsapp recipient=+60123456789 message=Demo order ORD-DEMO-001 has been placed successfully.
+[2026-04-13 10:26:29] channel=email recipient=student@example.com message=Demo order ORD-DEMO-001 has been placed successfully. | status=sent
+[2026-04-13 10:26:29] channel=sms recipient=+60123456789 message=Demo order ORD-DEMO-001 has been placed successfully. | status=simulated
+[2026-04-13 10:26:29] channel=whatsapp recipient=+60123456789 message=Demo order ORD-DEMO-001 has been placed successfully. | status=simulated
+[2026-04-13 10:27:59] channel=email recipient=leongwenghong5@gmail.com message=Order fa23a0fc-345f-4351-898e-007c341b2c5d has been placed successfully. Total amount: RM 539.10. | status=sent
+[2026-04-13 10:27:59] channel=sms recipient=01116860326 message=Order fa23a0fc-345f-4351-898e-007c341b2c5d has been placed successfully. Total amount: RM 539.10. | status=simulated
+[2026-04-13 10:27:59] channel=whatsapp recipient=01116860326 message=Order fa23a0fc-345f-4351-898e-007c341b2c5d has been placed successfully. Total amount: RM 539.10. | status=simulated
+[2026-04-13 10:31:14] channel=email recipient=student@example.com message=Demo order ORD-DEMO-001 has been placed successfully. | status=simulated
+[2026-04-13 10:31:14] channel=sms recipient=+60123456789 message=Demo order ORD-DEMO-001 has been placed successfully. | status=simulated
+[2026-04-13 10:31:14] channel=whatsapp recipient=+60123456789 message=Demo order ORD-DEMO-001 has been placed successfully. | status=simulated
+[2026-04-13 10:31:37] channel=email recipient=student@example.com message=Demo order ORD-DEMO-001 has been placed successfully. | status=sent
+[2026-04-13 10:31:37] channel=sms recipient=+60123456789 message=Demo order ORD-DEMO-001 has been placed successfully. | status=simulated
+[2026-04-13 10:31:37] channel=whatsapp recipient=+60123456789 message=Demo order ORD-DEMO-001 has been placed successfully. | status=simulated
+[2026-04-13 10:33:38] channel=email recipient=leongwenghong5@gmail.com message=Order 3b40cb2c-6353-42bf-8fe5-8c4de616393a has been placed successfully. Total amount: RM 520.20. | status=sent
+[2026-04-13 10:33:38] channel=sms recipient=01116860326 message=Order 3b40cb2c-6353-42bf-8fe5-8c4de616393a has been placed successfully. Total amount: RM 520.20. | status=simulated
+[2026-04-13 10:33:38] channel=whatsapp recipient=01116860326 message=Order 3b40cb2c-6353-42bf-8fe5-8c4de616393a has been placed successfully. Total amount: RM 520.20. | status=simulated
+[2026-04-13 10:39:57] channel=email recipient=leongwenghong5@gmail.com message=Order d4724ead-4f67-45e5-a460-781a1483e31c has been placed successfully. Total amount: RM 1,079.10. | status=sent
+[2026-04-13 10:39:57] channel=sms recipient=01116860326 message=Order d4724ead-4f67-45e5-a460-781a1483e31c has been placed successfully. Total amount: RM 1,079.10. | status=simulated
+[2026-04-13 10:39:57] channel=whatsapp recipient=01116860326 message=Order d4724ead-4f67-45e5-a460-781a1483e31c has been placed successfully. Total amount: RM 1,079.10. | status=simulated
+[2026-04-13 10:47:32] channel=email recipient=leongwenghong5@gmail.com message=Order af9fac0e-468d-4014-bdd5-00b4fc2baf1f has been placed successfully. Total amount: RM 1,079.10. | status=sent
+[2026-04-13 10:47:32] channel=sms recipient=01116860326 message=Order af9fac0e-468d-4014-bdd5-00b4fc2baf1f has been placed successfully. Total amount: RM 1,079.10. | status=simulated
+[2026-04-13 10:47:32] channel=whatsapp recipient=01116860326 message=Order af9fac0e-468d-4014-bdd5-00b4fc2baf1f has been placed successfully. Total amount: RM 1,079.10. | status=simulated
+[2026-04-13 11:02:44] channel=email recipient=leongwenghong5@gmail.com message=Order ea1abaeb-fc6b-4bc0-a114-2b1c23e84cc9 has been placed successfully. Total amount: RM 718.20. | status=sent

@@ -1,6 +1,7 @@
 <?php
 require_once 'config/config.php';
 require_once 'discount_system.php';
+require_once 'notification_system.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: member_login.php');
@@ -351,6 +352,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $clearCart->execute([':user_id' => $userId]);
 
         $pdo->commit();
+
+        $notificationMessage = 'Order ' . $orderId . ' has been placed successfully. Total amount: RM ' . number_format($finalTotal, 2) . '.';
+        $userEmailStmt = $pdo->prepare('SELECT Email FROM Users WHERE UserId = :user_id LIMIT 1');
+        $userEmailStmt->execute([':user_id' => $userId]);
+        $userEmail = trim((string) $userEmailStmt->fetchColumn());
+
+        $notifications = [];
+        if ($userEmail !== '') {
+            $notifications[] = new EmailNotification($userEmail);
+        }
+
+        $orderService = new OrderService();
+        try {
+            $orderService->notifyOrderPlaced($notifications, $notificationMessage);
+        } catch (Throwable $notificationError) {
+            error_log('Order email notification failed for order ' . $orderId . ': ' . $notificationError->getMessage());
+        }
 
         header('Location: checkout.php?success=1&order=' . urlencode($orderId));
         exit();
